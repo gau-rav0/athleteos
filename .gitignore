@@ -25,3 +25,22 @@ health-export/
 # OS
 .DS_Store
 Thumbs.db
+
+# Private data, tooling and all SDK/signing artifacts
+*.aar
+*.p12
+*.pem
+*.key
+*.log
+**/exports/
+**/private/
+**/import-state/
+**/quarantine/
+*.db
+*.db-*
+__pycache__/
+.venv/
+node_modules/
+coverage/
+.kotlin/
+.supabase/

@@ -1,0 +1,27 @@
+# Android / Gradle
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+.idea/
+
+# Secrets / env
+.env
+.env.*
+*.jks
+*.keystore
+
+# Samsung SDK binary
+android/app/libs/*.aar
+
+# Personal health exports
+*.csv
+*.zip
+*.jsonl
+samsung-health-export/
+health-export/
+
+# OS
+.DS_Store
+Thumbs.db

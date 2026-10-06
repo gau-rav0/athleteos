@@ -49,4 +49,6 @@ Never commit:
 
 ## Current status
 
-Repository scaffold started. See `docs/PHASE1_PRD.md` for the implementation contract.
+Phase 1 Android/Health Connect, durable Room queue, sync engine, Auth/RLS backend, infrastructure UI and the audited-format offline historical importer are implemented. **Phase 1 is not accepted as complete:** the official Samsung AAR/vendor bridge, private export/overlap validation, Supabase deployment and physical seven-day reliability gate remain outstanding. Phases 2–6 have not been implemented.
+
+Start with [setup](docs/SETUP_PHASE1.md), [architecture](docs/ARCHITECTURE_PHASE1.md), [Samsung blocker](docs/SAMSUNG_SETUP.md), [private historical import](docs/HISTORICAL_IMPORT.md) and [device acceptance checks](docs/DEVICE_VALIDATION.md). See `docs/PHASE1_PRD.md` for the unchanged implementation contract.

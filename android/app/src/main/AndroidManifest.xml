@@ -16,7 +16,7 @@
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
     <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
     <queries><package android:name="com.google.android.apps.healthdata" /><package android:name="com.sec.android.app.shealth" /></queries>
-    <application android:name=".AthleteApplication" android:label="AthleteOS" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.NoActionBar">
+    <application android:name=".AthleteApplication" android:label="AthleteOS" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name=".ui.MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
             <intent-filter><action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" /></intent-filter>

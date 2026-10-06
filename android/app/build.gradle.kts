@@ -7,7 +7,7 @@ plugins {
 }
 android {
     namespace = "com.athleteos.sync"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.athleteos.sync"
         minSdk = 29
@@ -20,6 +20,17 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2") }
+        // Optional pre-fetched official Maven runtime for offline CI/workstations.
+        providers.gradleProperty("robolectricDependencyDir").orNull?.let { directory ->
+            unitTests.all {
+                it.systemProperty("robolectric.offline", "true")
+                it.systemProperty("robolectric.dependency.dir", directory)
+            }
+        }
+    }
 }
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 dependencies {
@@ -41,7 +52,6 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    testImplementation("androidx.health.connect:connect-testing:1.0.0-alpha02")
     // Official, locally supplied binary only. The SDK bridge remains unavailable until implemented and verified.
     if (file("libs/samsung-health-data-api.aar").exists()) {
         implementation(files("libs/samsung-health-data-api.aar"))

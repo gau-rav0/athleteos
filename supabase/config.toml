@@ -1,0 +1,4 @@
+project_id = "athleteos"
+
+[functions.sync-batch]
+verify_jwt = true

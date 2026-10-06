@@ -1,0 +1,8 @@
+{
+  "compilerOptions": { "strict": true },
+  "tasks": {
+    "check": "deno check sync-batch/index.ts",
+    "test": "deno test sync-batch",
+    "lint": "deno lint sync-batch"
+  }
+}

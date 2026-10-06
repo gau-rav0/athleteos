@@ -46,3 +46,4 @@ node_modules/
 coverage/
 .kotlin/
 .supabase/
+supabase/.temp/

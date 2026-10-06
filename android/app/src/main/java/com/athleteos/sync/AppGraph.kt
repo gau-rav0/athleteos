@@ -7,6 +7,7 @@ import com.athleteos.sync.data.local.*
 import com.athleteos.sync.data.remote.*
 import com.athleteos.sync.data.source.healthconnect.HealthConnectSource
 import com.athleteos.sync.data.source.samsung.SamsungHealthSource
+import com.athleteos.sync.data.source.samsung.SamsungBridgeFactory
 import com.athleteos.sync.sync.SyncEngine
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -23,7 +24,7 @@ class AppGraph(context: Context) {
         .callTimeout(60, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
     val auth = SupabaseAuth(SessionVault(context), http)
     val healthConnect = HealthConnectSource(context)
-    val samsung = SamsungHealthSource()
+    val samsung = SamsungHealthSource(SamsungBridgeFactory.create(context))
     val upload = SupabaseUploadClient(context, auth, http, deviceUid)
     val engine = SyncEngine(listOf(healthConnect, samsung), store, upload)
     suspend fun registerDevice(user: String) = db.dao().putDevice(DeviceEntity(user, deviceUid, "android", Build.MODEL, BuildConfig.VERSION_NAME))

@@ -91,6 +91,22 @@ class RoomSyncStoreTest {
         store.apply(user, "health_connect", "steps", emptyList(), null, actualWindow)
         assertTrue(store.claim(user, 500).single().record.deleted)
     }
+    @Test fun windowWithoutAuthoritativeStartMembershipCannotInferDeletion() = runTest {
+        put(record())
+        val window = Snapshot(emptyList(), emptySet(), Instant.parse("2024-12-31T00:00:00Z"), Instant.parse("2025-01-03T00:00:00Z"), reconcileMissing = false)
+        store.apply(user, "health_connect", "steps", emptyList(), Checkpoint("safe-window"), window)
+        assertFalse(store.claim(user, 500).single().record.deleted)
+        assertEquals("safe-window", store.checkpoint(user, "health_connect", "steps")?.token)
+    }
+    @Test fun authoritativeDeletionTimestampSurvivesWhileOriginalRecordMetadataIsPreserved() = runTest {
+        put(record().copy(sourceUpdatedAt = "2025-01-01T00:01:00Z"))
+        store.apply(user, "health_connect", "steps", listOf(SourceChange.Delete(record().sourceUid, "2025-01-01T00:02:00Z")), Checkpoint("deleted"), null)
+        val deleted = store.claim(user, 500).single().record
+        assertTrue(deleted.deleted)
+        assertEquals("2025-01-01T00:02:00Z", deleted.sourceUpdatedAt)
+        assertEquals(record().startTime, deleted.startTime)
+        assertEquals(record().payload, deleted.payload)
+    }
     @Test fun diskStoreSurvivesReopenWithInFlightQueue() = runTest {
         db.close()
         val context = ApplicationProvider.getApplicationContext<Application>()

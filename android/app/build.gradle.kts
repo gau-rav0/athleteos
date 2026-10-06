@@ -5,7 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+val samsungEnabled = file("libs/samsung-health-data-api.aar").isFile && providers.gradleProperty("enableSamsungSdk").orNull != "false"
 android {
+    sourceSets.getByName("main").java.srcDir(if (samsungEnabled) "src/samsung/java" else "src/noSamsung/java")
     namespace = "com.athleteos.sync"
     compileSdk = 36
     defaultConfig {
@@ -18,7 +20,7 @@ android {
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true; buildConfig = true }
+    buildFeatures { compose = true; buildConfig = true; dataBinding = samsungEnabled }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -52,8 +54,9 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    // Official, locally supplied binary only. The SDK bridge remains unavailable until implemented and verified.
-    if (file("libs/samsung-health-data-api.aar").exists()) {
+    // Official local binary only; absent SDK selects the compilation-safe factory.
+    if (samsungEnabled) {
         implementation(files("libs/samsung-health-data-api.aar"))
+        implementation("com.google.code.gson:gson:2.11.0")
     }
 }

@@ -44,9 +44,12 @@ class SyncEngine(
             try {
                 val available = source.availability(type, background)
                 if (available != SourceAvailability.AVAILABLE) {
-                    // Missing Samsung SDK is an explicit blocker; other sources still run.
-                    failures++
-                    lastCode = available.name
+                    // A genuinely unsupported API is a capability result, not a failed read.
+                    // Missing SDKs and denied permissions remain explicit actionable failures.
+                    if (available != SourceAvailability.UNSUPPORTED) {
+                        failures++
+                        lastCode = available.name
+                    }
                     sourceResults[sourceKey] = available.name
                     continue
                 }
@@ -54,7 +57,7 @@ class SyncEngine(
                 if (checkpoint == null) {
                     // Create cursor BEFORE snapshot so updates during bootstrap are replayed.
                     val token = source.newToken(type)
-                    val snapshot = source.snapshot(type, Instant.EPOCH, started)
+                    val snapshot = source.snapshot(type, Instant.EPOCH, clock.instant())
                     read += snapshot.changes.size
                     checkpoint = Checkpoint(token)
                     store.apply(user, source.provider, type, safe(snapshot.changes), checkpoint, snapshot)
@@ -67,7 +70,7 @@ class SyncEngine(
                         check(++resets <= 1) { "REPEATED_TOKEN_EXPIRY" }
                         val token = source.newToken(type)
                         val known = source.inspectKnown(type, store.knownIds(user, source.provider, type))
-                        val snapshot = source.snapshot(type, Instant.EPOCH, started)
+                        val snapshot = source.snapshot(type, Instant.EPOCH, clock.instant())
                         read += known.size + snapshot.changes.size
                         checkpoint = Checkpoint(token, checkpoint.dailyReconciledAt)
                         store.apply(user, source.provider, type, safe(known + snapshot.changes), checkpoint, snapshot)

@@ -40,7 +40,7 @@ private class MemoryStore : SyncStore {
             is SourceChange.Delete -> put(records[HealthRecord(provider, type, change.sourceUid).identity(user)]?.record?.tombstone() ?: HealthRecord(provider, type, change.sourceUid, deleted = true))
             is SourceChange.Quarantine -> quarantine.add(change)
         }
-        if (snapshot != null) records.values.toList().filter { !it.record.deleted && it.record.startTime != null && Instant.parse(it.record.startTime) >= snapshot.from && Instant.parse(it.record.startTime) < snapshot.until && it.record.sourceUid !in snapshot.seenIds }.forEach { put(it.record.tombstone()) }
+        if (snapshot != null && snapshot.reconcileMissing) records.values.toList().filter { !it.record.deleted && it.record.startTime != null && Instant.parse(it.record.startTime) >= snapshot.from && Instant.parse(it.record.startTime) < snapshot.until && it.record.sourceUid !in snapshot.seenIds }.forEach { put(it.record.tombstone()) }
         if (checkpoint != null) checkpoints[Triple(user, provider, type)] = checkpoint
     }
     override suspend fun recoverQueue(user: String) { queue.keys.toList().forEach { queue[it] = "PENDING" } }
@@ -60,10 +60,11 @@ private class FakeSource(var data: List<HealthRecord> = listOf(sample())) : Heal
     var access = SourceAvailability.AVAILABLE
     var snapshotFails = false
     var tokenCount = 0
+    var tokenHook: () -> Unit = {}
     val windows = mutableListOf<Instant>()
     val events = mutableListOf<String>()
     override suspend fun availability(type: String, background: Boolean) = access
-    override suspend fun newToken(type: String): String { events.add("token"); return "fresh-${++tokenCount}" }
+    override suspend fun newToken(type: String): String { events.add("token"); tokenHook(); return "fresh-${++tokenCount}" }
     override suspend fun changes(type: String, token: String) = if (pages.isEmpty()) ChangePage(emptyList(), "$token-next") else pages.removeFirst()
     override suspend fun snapshot(type: String, from: Instant, until: Instant): Snapshot {
         events.add("snapshot"); windows.add(from)
@@ -194,10 +195,39 @@ class ReliabilityTest {
         engine.run("u"); engine.run("u"); engine.run("u", sevenDays = true)
         assertEquals(listOf(Instant.EPOCH, NOW.minusSeconds(7 * 86400), NOW.minusSeconds(72 * 3600), NOW.minusSeconds(7 * 86400)), source.windows)
     }
+    @Test fun unsupportedCapabilitiesDoNotPreventSuccessfulAvailableSourceSync() = runTest {
+        val store = MemoryStore(); val source = FakeSource(); val upload = FakeUpload(store)
+        val unsupported = object : HealthDataSource by source {
+            override val provider = "samsung_health"
+            override suspend fun availability(type: String, background: Boolean) = SourceAvailability.UNSUPPORTED
+        }
+        val result = SyncEngine(listOf(source, unsupported), store, upload, Clock.fixed(NOW, ZoneOffset.UTC)).run("u")
+        assertEquals("SUCCESS", result.status)
+        assertEquals(0, result.failures)
+        assertEquals(1, store.records.size)
+        assertNull(store.checkpoint("u", "samsung_health", "steps"))
+    }
+    @Test fun bootstrapSnapshotIncludesRecordsCreatedBeforeTheFreshCursorWasObtained() = runTest {
+        var current = NOW
+        val clock = object : Clock() {
+            override fun getZone() = ZoneOffset.UTC
+            override fun withZone(zone: java.time.ZoneId): Clock = this
+            override fun instant() = current
+        }
+        val gapRecord = sample("synthetic-bootstrap-gap").copy(startTime = NOW.plusSeconds(1).toString(), endTime = NOW.plusSeconds(2).toString())
+        val source = FakeSource(listOf(gapRecord))
+        source.tokenHook = { current = NOW.plusSeconds(2) }
+        val store = MemoryStore(); val upload = FakeUpload(store)
+        assertEquals("SUCCESS", SyncEngine(listOf(source), store, upload, clock).run("u").status)
+        assertEquals("synthetic-bootstrap-gap", store.records.values.single().record.sourceUid)
+        assertFalse(store.records.values.single().record.deleted)
+        assertTrue(store.queue.isEmpty())
+    }
     @Test fun sourcePriorityIsMetadataOnlyAndNeverInventsHrv() {
         assertEquals(0, SourcePolicy.priority("samsung_health", "steps", "watch"))
         assertTrue(SourcePolicy.priority("samsung_health", "sleep") > SourcePolicy.priority("health_connect", "sleep"))
         assertTrue(SourcePolicy.priority("samsung_health", "heart_rate", "watch") > SourcePolicy.priority("samsung_health", "heart_rate", "phone"))
+        assertEquals(200, SourcePolicy.priority("samsung_health", "heart_rate", "MOBILE"))
         assertEquals(0, SourcePolicy.priority("samsung_health", "hrv_rmssd"))
         assertEquals(100, SourcePolicy.priority("health_connect", "hrv_rmssd"))
     }

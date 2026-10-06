@@ -53,7 +53,7 @@ An expired token requires complete readable reconciliation. If previously known 
 
 ## Samsung / historical export
 
-Follow SAMSUNG_SETUP.md for the missing official AAR and vendor bridge. Follow HISTORICAL_IMPORT.md to point the local importer at your private export. Neither actual Samsung integration nor private export completeness is certified by a synthetic test suite.
+Follow SAMSUNG_SETUP.md for the locally supplied SDK 1.1.0, read-only bridge and Samsung Health authorization setup. The binary remains ignored and is required for a Samsung-enabled build. To verify the compilation-safe fallback while retaining your local file, run `gradlew.bat test lint assembleDebug -PenableSamsungSdk=false`. Rebuild without that property before installing for Samsung reads. Follow HISTORICAL_IMPORT.md to point the local importer at your private export. Neither actual Samsung integration nor private export completeness is certified by a synthetic test suite.
 
 ## Automated checks
 

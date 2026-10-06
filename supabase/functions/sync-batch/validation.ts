@@ -218,6 +218,9 @@ export function validBatch(
               "UNSUPPORTED",
               "SDK_MISSING",
               "SDK_BRIDGE_REQUIRED",
+              "PLATFORM_MISSING",
+              "PLATFORM_UPDATE_REQUIRED",
+              "PLATFORM_UNAVAILABLE",
               "SOURCE_FAILED",
             ].includes(String(value));
         }))) &&

@@ -1,5 +1,6 @@
 package com.athleteos.sync.ui
 
+import android.app.Activity
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -84,6 +85,11 @@ class SyncViewModel(application: Application) : AndroidViewModel(application) {
         if (permissions.isEmpty()) state.update { it.copy(message = "Health Connect unavailable — install or update it first") }
         else launch(permissions)
     }
+    fun requestSamsungPermissions(activity: Activity) = action {
+        graph.samsung.requestPermissions(activity)
+        diagnostics()
+        state.update { it.copy(message = "Samsung Health permission request completed - review source status") }
+    }
     private fun action(block: suspend () -> Unit) {
         if (state.value.busy) return
         viewModelScope.launch {
@@ -96,28 +102,42 @@ class SyncViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun diagnostics() {
         val hc = graph.healthConnect
         val permissions = hc.grantedPermissions().sorted()
-        availability = graph.healthConnect.recordTypes.associateWith { hc.availability(it, false) } +
-            graph.samsung.recordTypes.filterNot { it in graph.healthConnect.recordTypes }.associateWith { graph.samsung.availability(it, false) }
-        state.update { it.copy(samsung = graph.samsung.availability("steps", false).name,
+        val samsungAvailability = graph.samsung.recordTypes.associateWith { graph.samsung.availability(it, false) }
+        val hcAvailability = hc.recordTypes.associateWith { hc.availability(it, false) }
+        availability = (hcAvailability.keys + samsungAvailability.keys).associateWith { type ->
+            mergeAvailability(listOfNotNull(hcAvailability[type], samsungAvailability[type]))
+        }
+        state.update { it.copy(samsung = samsungAvailability.entries.joinToString("; ") { "${it.key}=${it.value.name}" },
             healthConnect = "SDK_${hc.sdkStatus()}; ${permissions.count { name -> name.contains("READ_") }} read permissions granted",
             permissions = permissions) }
         updateRows()
     }
     private fun updateRows() {
         val rows = labels.map { (type, label) ->
-            val metric = when (type) { "sleep_stages" -> "sleep"; "body_composition" -> "body_fat"; else -> type }
-            val record = summaries.find { it.recordType == metric } ?: if (type == "body_composition") summaries.find { it.recordType == type } else null
-            val latest = record?.latest
-            val accessible = availability[metric] ?: SourceAvailability.UNSUPPORTED
+            val metrics = when (type) {
+                "sleep_stages" -> setOf("sleep", "sleep_stage")
+                "body_composition" -> setOf("body_fat", "body_composition")
+                else -> setOf(type)
+            }
+            val latest = summaries.filter { it.recordType in metrics }.mapNotNull { it.latest }.maxByOrNull { Instant.parse(it) }
+            val accessible = mergeAvailability(metrics.mapNotNull { availability[it] })
+            val hasStages = stages > 0 || summaries.any { it.recordType == "sleep_stage" && it.count > 0 }
             val status = when {
                 accessible == SourceAvailability.PERMISSION_REQUIRED -> DataStatus.PERMISSION_REQUIRED
-                latest != null && (type != "sleep_stages" || stages > 0) -> if (Duration.between(Instant.parse(latest), Instant.now()) > Duration.ofHours(72)) DataStatus.STALE else DataStatus.AVAILABLE
+                latest != null && (type != "sleep_stages" || hasStages) -> if (Duration.between(Instant.parse(latest), Instant.now()) > Duration.ofHours(72)) DataStatus.STALE else DataStatus.AVAILABLE
                 accessible != SourceAvailability.AVAILABLE -> DataStatus.UNSUPPORTED
                 else -> DataStatus.MISSING
             }
-            DataRow(label, status, if (type == "sleep_stages" && stages == 0) null else latest)
+            DataRow(label, status, if (type == "sleep_stages" && !hasStages) null else latest)
         }
         state.update { it.copy(rows = rows) }
+    }
+    private fun mergeAvailability(values: List<SourceAvailability>): SourceAvailability = when {
+        SourceAvailability.AVAILABLE in values -> SourceAvailability.AVAILABLE
+        SourceAvailability.PERMISSION_REQUIRED in values -> SourceAvailability.PERMISSION_REQUIRED
+        SourceAvailability.SDK_MISSING in values -> SourceAvailability.SDK_MISSING
+        SourceAvailability.SDK_BRIDGE_REQUIRED in values -> SourceAvailability.SDK_BRIDGE_REQUIRED
+        else -> SourceAvailability.UNSUPPORTED
     }
     /** Allowlist only. No IDs, account details, source timestamps, payloads or exception messages. */
     fun redactedDiagnostics(): String = state.value.let {

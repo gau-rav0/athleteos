@@ -219,3 +219,36 @@ Deno.test("audited historical raw types preserve undated configuration and never
     }),
   );
 });
+
+Deno.test("Samsung platform diagnostics accept fixed codes and reject arbitrary detail", () => {
+  for (
+    const code of [
+      "PLATFORM_MISSING",
+      "PLATFORM_UPDATE_REQUIRED",
+      "PLATFORM_UNAVAILABLE",
+    ]
+  ) {
+    const run = {
+      id: "11111111-1111-4111-8111-111111111111",
+      started_at: "2025-01-01T00:00:00Z",
+      finished_at: "2025-01-01T00:00:01Z",
+      status: "PARTIAL_FAILURE",
+      records_read: 0,
+      records_failed: 1,
+      error_code: code,
+      source_results: { "samsung_health:sleep": code },
+    };
+    assert(validBatch({ ...batch(), runs: [run] }));
+    assert(
+      !validBatch({
+        ...batch(),
+        runs: [{
+          ...run,
+          source_results: {
+            "samsung_health:sleep": "arbitrary vendor exception detail",
+          },
+        }],
+      }),
+    );
+  }
+});

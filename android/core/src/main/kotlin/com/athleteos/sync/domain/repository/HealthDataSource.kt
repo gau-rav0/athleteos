@@ -5,13 +5,13 @@ import java.time.Instant
 
 sealed interface SourceChange {
     data class Upsert(val record: HealthRecord) : SourceChange
-    data class Delete(val sourceUid: String) : SourceChange
+    data class Delete(val sourceUid: String, val sourceUpdatedAt: String? = null) : SourceChange
     /** Persist privately before allowing a cursor to advance. No payload in diagnostic messages. */
     data class Quarantine(val sourceUid: String, val payload: String, val reason: String) : SourceChange
 }
 data class ChangePage(val changes: List<SourceChange>, val nextToken: String, val hasMore: Boolean = false, val expired: Boolean = false)
-data class Snapshot(val changes: List<SourceChange>, val seenIds: Set<String>, val from: Instant, val until: Instant)
-enum class SourceAvailability { AVAILABLE, PERMISSION_REQUIRED, UNSUPPORTED, SDK_MISSING, SDK_BRIDGE_REQUIRED }
+data class Snapshot(val changes: List<SourceChange>, val seenIds: Set<String>, val from: Instant, val until: Instant, val reconcileMissing: Boolean = true)
+enum class SourceAvailability { AVAILABLE, PERMISSION_REQUIRED, UNSUPPORTED, SDK_MISSING, SDK_BRIDGE_REQUIRED, PLATFORM_MISSING, PLATFORM_UPDATE_REQUIRED, PLATFORM_UNAVAILABLE }
 enum class SourceAccessProblem { PERMISSION_REVOKED, HISTORY_REQUIRED_FOR_TOKEN_RESET }
 class SourceAccessException(val problem: SourceAccessProblem) : SecurityException(problem.name)
 

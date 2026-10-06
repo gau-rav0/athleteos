@@ -36,12 +36,13 @@ class RoomSyncStore(private val db: HealthDatabase) : SyncStore {
                 val old = dao.record(user, HealthRecord(provider, type, change.sourceUid).identity(user))
                 val record = old?.let { json.decodeFromString<HealthRecord>(it.payloadJson).tombstone() }
                     ?: HealthRecord(provider, type, change.sourceUid, deleted = true)
-                record.validate()
-                upsert(user, record)
+                val tombstone = if (change.sourceUpdatedAt == null) record else record.copy(sourceUpdatedAt = change.sourceUpdatedAt)
+                tombstone.validate()
+                upsert(user, tombstone)
             }
             is SourceChange.Quarantine -> quarantine(user, provider, type, change.sourceUid, change.payload, change.reason)
         }
-        if (snapshot != null) {
+        if (snapshot != null && snapshot.reconcileMissing) {
             for (old in dao.records(user, provider, type)) {
                 // Use start time membership, matching Health Connect's interval start filter.
                 val time = old.startTimeUtc?.let(Instant::parse) ?: continue

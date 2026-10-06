@@ -1,5 +1,6 @@
 package com.athleteos.sync.ui
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -59,6 +60,7 @@ private fun AthleteScreen(model: SyncViewModel = viewModel()) {
                     Text("Last sync result: ${state.lastRun?.status ?: "None"}")
                     Button(onClick = { model.sync() }, enabled = state.signedIn && !state.busy) { Text("Sync Now") }
                     Button(onClick = { model.requestPermissions { permissionLauncher.launch(it) } }, enabled = !state.busy) { Text("Grant Health Connect read permissions") }
+                    Button(onClick = { (context as? Activity)?.let(model::requestSamsungPermissions) }, enabled = !state.busy && context is Activity) { Text("Grant Samsung Health read permissions") }
                     TextButton(onClick = {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))) }
                             .onFailure { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata"))) } }

@@ -70,7 +70,7 @@ object SourcePolicy {
         type == "hrv_rmssd" -> if (provider == "health_connect") 100 else 0
         provider == "samsung_health" && type == "heart_rate" -> when {
             device.contains("watch", true) -> 300
-            device.contains("phone", true) -> 200
+            device.contains("phone", true) || device.contains("mobile", true) -> 200
             else -> 150
         }
         provider == "samsung_health" -> 200

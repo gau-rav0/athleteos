@@ -24,7 +24,7 @@ data class UiState(
     val lastRun: SyncRunEntity? = null, val lastSuccess: String? = null,
     val samsung: String = "NOT_CHECKED", val healthConnect: String = "NOT_CHECKED",
     val permissions: List<String> = emptyList(), val rows: List<DataRow> = emptyList(),
-    val server: String = "NOT_CONTACTED",
+    val server: String = "NOT_CONTACTED", val serverFailure: String = "NONE",
 )
 private data class LocalStats(val pending: Int, val failed: Int, val quarantined: Int, val lastRun: SyncRunEntity?, val lastSuccess: String?)
 
@@ -58,6 +58,7 @@ class SyncViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch { graph.upload.lastServerResult.collect { value -> state.update { it.copy(server = value) } } }
+        viewModelScope.launch { graph.upload.lastServerFailure.collect { value -> state.update { it.copy(serverFailure = value) } } }
     }
 
     fun login(url: String, key: String, email: String, password: String) = action {
@@ -142,7 +143,7 @@ class SyncViewModel(application: Application) : AndroidViewModel(application) {
     /** Allowlist only. No IDs, account details, source timestamps, payloads or exception messages. */
     fun redactedDiagnostics(): String = state.value.let {
         "AthleteOS ${BuildConfig.VERSION_NAME}\ninstallation=REDACTED\nSamsung=${it.samsung}\nHealthConnect=${it.healthConnect}\n" +
-            "pending=${it.pending}\nfailed=${it.failed}\nquarantined=${it.quarantined}\nlast_result=${it.lastRun?.status ?: "NONE"}\nserver=${it.server}\n" +
+            "pending=${it.pending}\nfailed=${it.failed}\nquarantined=${it.quarantined}\nlast_result=${it.lastRun?.status ?: "NONE"}\nserver=${it.server}\nlast_server_failure=${it.serverFailure}\n" +
             "permissions=${it.permissions.joinToString(",")}\n"
     }
     val deviceUid: String get() = graph.deviceUid

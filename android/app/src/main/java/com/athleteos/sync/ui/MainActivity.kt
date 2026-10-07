@@ -87,6 +87,7 @@ private fun AthleteScreen(model: SyncViewModel = viewModel()) {
                     Text("Last success: ${state.lastSuccess ?: "None"}")
                     Text("Queue: ${state.pending}; failed: ${state.failed}; quarantined: ${state.quarantined}")
                     Text("Last server result: ${state.server}")
+                    Text("Last server failure (retained): ${state.serverFailure}")
                     Text("Last failure code: ${state.lastRun?.errorCode ?: "None"}")
                     state.lastRun?.sourceResultsJson?.let { codes ->
                         Json.parseToJsonElement(codes).jsonObject.forEach { (source, result) -> Text("$source: ${result.jsonPrimitive.content}") }

@@ -17,9 +17,15 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class SupabaseUploadClient(context: Context, private val auth: SupabaseAuth, private val http: OkHttpClient, private val deviceUid: String) : UploadClient {
     private val preferences = context.getSharedPreferences("server_diagnostics", Context.MODE_PRIVATE)
     val lastServerResult = MutableStateFlow(preferences.getString("last_result", "NOT_CONTACTED") ?: "NOT_CONTACTED")
-    private fun result(code: String) {
+    val lastServerFailure = MutableStateFlow(preferences.getString("last_failure", "NONE") ?: "NONE")
+    internal fun result(code: String) {
+        require(code.matches(Regex("HTTP_[1-5][0-9]{2}")) || code in setOf("NETWORK_FAILED", "NETWORK_TIMEOUT", "INVALID_ACKNOWLEDGEMENT"))
         lastServerResult.value = code
         preferences.edit().putString("last_result", code).apply()
+        if (!code.matches(Regex("HTTP_2[0-9]{2}"))) {
+            lastServerFailure.value = code
+            preferences.edit().putString("last_failure", code).apply()
+        }
     }
     private val json = Json { encodeDefaults = true }
 
@@ -66,7 +72,11 @@ class SupabaseUploadClient(context: Context, private val auth: SupabaseAuth, pri
                         }
                     }
                 } catch (error: Exception) {
-                    if (!received) result("NETWORK_FAILED")
+                    when {
+                        error is java.io.InterruptedIOException -> result("NETWORK_TIMEOUT")
+                        !received -> result("NETWORK_FAILED")
+                        lastServerResult.value.matches(Regex("HTTP_2[0-9]{2}")) -> result("INVALID_ACKNOWLEDGEMENT")
+                    }
                     throw error
                 }
             }

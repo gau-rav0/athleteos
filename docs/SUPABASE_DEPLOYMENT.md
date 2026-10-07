@@ -69,3 +69,7 @@ The backend is READY FOR PHONE TESTING. The project URL and publishable key were
 Install the SDK-enabled APK and follow SETUP_PHASE1.md, SAMSUNG_SETUP.md and DEVICE_VALIDATION.md. Phone/watch reads, real permission flows, offline/reboot recovery and the seven-day reliability gate remain untested on physical hardware. No historical data was uploaded, and no Phase 2 functionality was added.
 
 Supabase CLI linkage metadata under supabase/.temp/ is ignored. Access credentials remain in the CLI's local credential storage; no repository credential files were introduced. Public project configuration stays local.
+
+## Payload-size consistency fix
+
+Migration `0003_payload_wire_size.sql` fixes a physical-validation ingestion failure: PostgreSQL's `jsonb::text` inserts formatting spaces, so its previous byte check could reject records that passed the compact JSON limit on Android and the Edge Function. The new helper excludes only formatting spaces outside quoted strings. The 262,144-byte payload cap, RLS, authenticated ownership, and idempotent upsert rules remain enforced. Synthetic regression checks in `supabase/tests/payload_wire_size.sql` cover quoted whitespace/escapes, UTF-8, the exact size boundary, oversized input, and dense arrays whose formatted representation exceeds the cap. All passed on the linked project after applying migration 0003. This does not certify completion of the physical sync or the seven-day acceptance gate.

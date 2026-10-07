@@ -46,4 +46,8 @@ node_modules/
 coverage/
 .kotlin/
 .supabase/
+.next/
+*.tsbuildinfo
+playwright-report/
+test-results/
 supabase/.temp/

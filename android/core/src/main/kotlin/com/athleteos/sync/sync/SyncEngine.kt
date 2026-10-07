@@ -6,6 +6,8 @@ import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
@@ -21,7 +23,12 @@ class SyncEngine(
 ) {
     private val mutex = Mutex()
 
-    suspend fun run(user: String, background: Boolean = false, sevenDays: Boolean = false): SyncResult = mutex.withLock {
+    // Record normalization, validation and serialization can be expensive for real
+    // sample series. Never inherit a foreground caller's Android main dispatcher.
+    suspend fun run(user: String, background: Boolean = false, sevenDays: Boolean = false): SyncResult =
+        withContext(Dispatchers.Default) { runOnWorker(user, background, sevenDays) }
+
+    private suspend fun runOnWorker(user: String, background: Boolean, sevenDays: Boolean): SyncResult = mutex.withLock {
         require(user.isNotBlank())
         val started = clock.instant()
         var read = 0

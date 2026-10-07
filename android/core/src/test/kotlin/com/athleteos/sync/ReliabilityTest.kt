@@ -87,6 +87,16 @@ private class FakeUpload(private val store: MemoryStore) : UploadClient {
 }
 
 class ReliabilityTest {
+    @Test fun foregroundSyncDoesNotProcessRecordsOnTheCallingThread() = runTest {
+        val caller = Thread.currentThread()
+        val source = FakeSource()
+        var processingThread: Thread? = null
+        source.tokenHook = { processingThread = Thread.currentThread() }
+        val store = MemoryStore()
+        engine(source, store, FakeUpload(store)).run("synthetic-user")
+        assertNotNull(processingThread)
+        assertNotSame(caller, processingThread)
+    }
     @Test fun undatedHistoricalConfigurationKeepsRawSemanticsWithoutAllowingUndatedLiveMetrics() {
         HealthRecord("samsung_health", "training_load_goal", "synthetic-goal", ingestionOrigin = "historical").validate()
         assertFailsWith<IllegalArgumentException> { HealthRecord("samsung_health", "steps", "synthetic", ingestionOrigin = "historical").validate() }

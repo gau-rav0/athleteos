@@ -142,7 +142,7 @@ export function validRecord(record: unknown): record is ObjectValue {
     if (record[key] != null && !text(record[key])) return false;
   }
   return new TextEncoder().encode(JSON.stringify(record.payload)).length <=
-    262144;
+    1835008;
 }
 export function validBatch(
   body: unknown,

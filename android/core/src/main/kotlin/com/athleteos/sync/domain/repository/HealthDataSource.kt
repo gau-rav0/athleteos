@@ -31,4 +31,6 @@ interface HealthDataSource {
     }
     /** Reset reconciles previously observed records even when they are outside the readable time window. */
     suspend fun inspectKnown(type: String, sourceUids: List<String>): List<SourceChange>
+    /** Re-read quarantined source IDs; absence must not fabricate a tombstone. */
+    suspend fun retryQuarantined(type: String, sourceUids: List<String>): List<SourceChange> = emptyList()
 }

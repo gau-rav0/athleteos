@@ -91,4 +91,9 @@ class HealthConnectSource(private val context: Context, private val injectedClie
         }
         return snapshot.changes + missing.map { SourceChange.Delete(it) }
     }
+    override suspend fun retryQuarantined(type: String, sourceUids: List<String>): List<SourceChange> {
+        requirePermission(type)
+        return sourceUids.map { id -> HealthConnectMapper.record(type,
+            client().readRecord(HealthConnectMapper.types.getValue(type), id).record) }
+    }
 }

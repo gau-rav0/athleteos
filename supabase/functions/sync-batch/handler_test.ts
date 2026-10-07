@@ -148,7 +148,8 @@ Deno.test("record count boundary, duplicate identity and malformed records", () 
   assert(!validRecord({ ...record(), end_time: "2024-01-01T00:00:00Z" }));
   assert(!validRecord({ ...record(), user_id: "forged" }));
   assert(!validRecord({ ...record(), payload: [] }));
-  assert(!validRecord({ ...record(), payload: { value: "x".repeat(262144) } }));
+  assert(validRecord({ ...record(), payload: { value: "x".repeat(300000) } }));
+  assert(!validRecord({ ...record(), payload: { value: "x".repeat(1835008) } }));
 });
 Deno.test("HTTP method and content type rejected", async () => {
   const handler = createHandler(

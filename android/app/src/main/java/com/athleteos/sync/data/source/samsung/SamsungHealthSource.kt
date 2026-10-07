@@ -33,4 +33,6 @@ class SamsungHealthSource(private val bridge: SamsungSdkBridge? = null) : Health
     override suspend fun snapshot(type: String, from: Instant, until: Instant) = required().snapshot(type, from, until)
     override suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit) = required().streamSnapshot(type, from, until, consume)
     override suspend fun inspectKnown(type: String, sourceUids: List<String>) = required().inspectKnown(type, sourceUids)
+    override suspend fun retryQuarantined(type: String, sourceUids: List<String>) =
+        required().inspectKnown(type, sourceUids).filterNot { it is SourceChange.Delete }
 }

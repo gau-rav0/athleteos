@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HealthDao {
+    @Query("SELECT DISTINCT sourceUid FROM quarantine WHERE userId = :user AND provider = :provider AND recordType = :type")
+    suspend fun quarantinedIds(user: String, provider: String, type: String): List<String>
+    @Query("DELETE FROM quarantine WHERE userId = :user AND provider = :provider AND recordType = :type AND sourceUid = :uid")
+    suspend fun clearQuarantine(user: String, provider: String, type: String, uid: String)
     @Query("SELECT sourceRecordId FROM raw_health_records WHERE userId = :user AND provider = :provider AND recordType = :type AND deleted = 0")
     suspend fun liveSourceIds(user: String, provider: String, type: String): List<String>
     @Query("SELECT sourceRecordId FROM raw_health_records WHERE userId = :user AND provider = :provider AND recordType = :type AND deleted = 0 AND startTimeUtc >= :from AND startTimeUtc < :until")

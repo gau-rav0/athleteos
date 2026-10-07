@@ -317,7 +317,7 @@ def normalize(
                                     record["payload"], ensure_ascii=False
                                 ).encode()
                             )
-                            > 262144
+                            > 1835008
                         ):
                             raise ValueError("PAYLOAD_TOO_LARGE")
                         identity = hashlib.sha256(

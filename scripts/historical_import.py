@@ -218,7 +218,7 @@ def normalize_row(table, row, naive_basis=None, default_offset=None):
     }
     if (
         len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode())
-        > 262144
+        > 1835008
     ):
         raise ValueError("PAYLOAD_TOO_LARGE")
     return record

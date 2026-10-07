@@ -22,6 +22,7 @@ data class SyncRun(
 interface SyncStore {
     suspend fun checkpoint(user: String, provider: String, type: String): Checkpoint?
     suspend fun knownIds(user: String, provider: String, type: String): List<String>
+    suspend fun quarantinedIds(user: String, provider: String, type: String): List<String> = emptyList()
     /** Atomic: records + queue + quarantine + checkpoint. Throw/rollback on persistence failure. */
     suspend fun apply(user: String, provider: String, type: String, changes: List<SourceChange>, checkpoint: Checkpoint? = null, snapshot: Snapshot? = null)
     suspend fun recoverQueue(user: String)

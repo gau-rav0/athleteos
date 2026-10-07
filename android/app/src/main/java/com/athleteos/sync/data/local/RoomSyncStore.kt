@@ -20,6 +20,7 @@ class RoomSyncStore(private val db: HealthDatabase) : SyncStore {
         Checkpoint(it.token, it.dailyReconciledAt?.let(Instant::parse))
     }
     override suspend fun knownIds(user: String, provider: String, type: String) = dao.liveSourceIds(user, provider, type)
+    override suspend fun quarantinedIds(user: String, provider: String, type: String) = dao.quarantinedIds(user, provider, type)
 
     override suspend fun apply(user: String, provider: String, type: String, changes: List<SourceChange>, checkpoint: Checkpoint?, snapshot: Snapshot?) = db.withTransaction {
         for (change in changes) when (change) {
@@ -28,6 +29,7 @@ class RoomSyncStore(private val db: HealthDatabase) : SyncStore {
                 try {
                     change.record.validate()
                     upsert(user, change.record)
+                    dao.clearQuarantine(user, provider, type, change.record.sourceUid)
                 } catch (_: IllegalArgumentException) {
                     quarantine(user, provider, type, change.record.sourceUid, json.encodeToString(change.record), "INVALID_RECORD")
                 }

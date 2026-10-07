@@ -47,7 +47,8 @@ data class HealthRecord(
         listOfNotNull(sourcePackage, sourceDeviceId).forEach { require(it.isNotBlank() && it.length <= 512) { "INVALID_PROVENANCE" } }
         require(deleted || startTime != null || (provider == "samsung_health" && ingestionOrigin == "historical" && recordType in SourcePolicy.undatedTypes)) { "MISSING_TIME" }
         if (startTime != null && endTime != null) require(Instant.parse(endTime) >= Instant.parse(startTime)) { "INVALID_INTERVAL" }
-        require(payload.toString().toByteArray().size <= 262_144) { "PAYLOAD_TOO_LARGE" }
+        // Keep envelope + provenance below Android SQLite's standard 2 MiB cursor window.
+        require(payload.toString().toByteArray().size <= 1_835_008) { "PAYLOAD_TOO_LARGE" }
     }
 
     fun tombstone(): HealthRecord = copy(deleted = true)

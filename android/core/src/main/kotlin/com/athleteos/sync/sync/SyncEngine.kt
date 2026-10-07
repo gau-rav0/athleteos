@@ -66,6 +66,11 @@ class SyncEngine(
                     continue
                 }
                 var checkpoint = store.checkpoint(user, source.provider, type)
+                for (ids in store.quarantinedIds(user, source.provider, type).chunked(25)) {
+                    val recovered = source.retryQuarantined(type, ids)
+                    read += recovered.size
+                    store.apply(user, source.provider, type, safe(recovered), null)
+                }
                 if (checkpoint == null) {
                     // Create cursor BEFORE snapshot so updates during bootstrap are replayed.
                     val token = source.newToken(type)

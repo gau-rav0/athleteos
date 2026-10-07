@@ -62,6 +62,17 @@ class RoomSyncStoreTest {
         assertEquals(0, db.dao().queueLength(user).first())
         assertEquals("synthetic-cursor", store.checkpoint(user, "health_connect", "steps")?.token)
     }
+    @Test fun recoveredDenseRecordReplacesQuarantineOnlyAfterDurableQueuePersistence() = runTest {
+        store.apply(user, "health_connect", "steps", listOf(SourceChange.Quarantine("synthetic-record", "private-synthetic-payload", "PAYLOAD_TOO_LARGE")), null)
+        assertEquals(listOf("synthetic-record"), store.quarantinedIds(user, "health_connect", "steps"))
+        val dense = record().copy(payload = buildJsonObject { put("synthetic_series", "x".repeat(300000)) })
+        put(dense)
+        assertEquals(0, db.dao().quarantineCount(user).first())
+        assertEquals(dense, store.claim(user, 500).single().record)
+        val oversized = record().copy(sourceUid = "too-large", payload = buildJsonObject { put("value", "x".repeat(1835008)) })
+        put(oversized)
+        assertEquals(listOf("too-large"), store.quarantinedIds(user, "health_connect", "steps"))
+    }
     @Test fun invalidDeletionRollsBackRecordsQueueAndCheckpointTogether() = runTest {
         assertFailsWith<IllegalArgumentException> {
             store.apply(user, "health_connect", "steps", listOf(SourceChange.Upsert(record()), SourceChange.Delete("")), Checkpoint("unsafe"), null)

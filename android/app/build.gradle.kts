@@ -58,5 +58,7 @@ dependencies {
     if (samsungEnabled) {
         implementation(files("libs/samsung-health-data-api.aar"))
         implementation("com.google.code.gson:gson:2.11.0")
+        // Local AARs have no Maven metadata to bring in SDK transitive dependencies.
+        implementation("org.jetbrains.kotlin:kotlin-parcelize-runtime:2.1.20")
     }
 }

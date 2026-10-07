@@ -50,28 +50,34 @@ class HealthConnectSource(private val context: Context, private val injectedClie
     }
 
     override suspend fun snapshot(type: String, from: Instant, until: Instant): Snapshot {
+        val result = mutableListOf<SourceChange>()
+        return streamSnapshot(type, from, until) { result.addAll(it) }.copy(changes = result)
+    }
+
+    override suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit): Snapshot {
         requirePermission(type)
         val history = HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY in grantedPermissions()
         // Conservatively stay within the default access interval when history is unavailable.
         val actualFrom = if (history) from else maxOf(from, Instant.now().minus(Duration.ofDays(29)))
         if (actualFrom >= until) return Snapshot(emptyList(), emptySet(), actualFrom, until)
-        val result = mutableListOf<SourceChange>()
         val seen = mutableSetOf<String>()
         var token: String? = null
         do {
             val response = client().readRecords(ReadRecordsRequest(HealthConnectMapper.types.getValue(type),
-                TimeRangeFilter.between(actualFrom, until), pageSize = 500, pageToken = token))
+                TimeRangeFilter.between(actualFrom, until), pageSize = 100, pageToken = token))
+            val page = mutableListOf<SourceChange>()
             for (record in response.records) {
                 seen.add(record.metadata.id) // Even quarantined records are present, not deletions.
-                result.add(HealthConnectMapper.record(type, record))
+                page.add(HealthConnectMapper.record(type, record))
             }
+            consume(page)
             val next = response.pageToken
             check(next == null || next != token) { "NON_ADVANCING_PAGE" }
             token = next
         } while (token != null)
         requirePermission(type)
         if (history && HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY !in grantedPermissions()) throw SecurityException("HISTORY_REVOKED")
-        return Snapshot(result, seen, actualFrom, until)
+        return Snapshot(emptyList(), seen, actualFrom, until)
     }
 
     override suspend fun inspectKnown(type: String, sourceUids: List<String>): List<SourceChange> {

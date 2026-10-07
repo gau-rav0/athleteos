@@ -19,7 +19,7 @@ class RoomSyncStore(private val db: HealthDatabase) : SyncStore {
     override suspend fun checkpoint(user: String, provider: String, type: String) = dao.checkpoint(user, provider, type)?.let {
         Checkpoint(it.token, it.dailyReconciledAt?.let(Instant::parse))
     }
-    override suspend fun knownIds(user: String, provider: String, type: String) = dao.records(user, provider, type).filterNot { it.deleted }.map { it.sourceRecordId }
+    override suspend fun knownIds(user: String, provider: String, type: String) = dao.liveSourceIds(user, provider, type)
 
     override suspend fun apply(user: String, provider: String, type: String, changes: List<SourceChange>, checkpoint: Checkpoint?, snapshot: Snapshot?) = db.withTransaction {
         for (change in changes) when (change) {
@@ -43,10 +43,9 @@ class RoomSyncStore(private val db: HealthDatabase) : SyncStore {
             is SourceChange.Quarantine -> quarantine(user, provider, type, change.sourceUid, change.payload, change.reason)
         }
         if (snapshot != null && snapshot.reconcileMissing) {
-            for (old in dao.records(user, provider, type)) {
-                // Use start time membership, matching Health Connect's interval start filter.
-                val time = old.startTimeUtc?.let(Instant::parse) ?: continue
-                if (!old.deleted && time >= snapshot.from && time < snapshot.until && old.sourceRecordId !in snapshot.seenIds) {
+            for (uid in dao.windowSourceIds(user, provider, type, indexedTime.format(snapshot.from), indexedTime.format(snapshot.until))) {
+                if (uid !in snapshot.seenIds) {
+                    val old = dao.record(user, HealthRecord(provider, type, uid).identity(user)) ?: continue
                     upsert(user, json.decodeFromString<HealthRecord>(old.payloadJson).tombstone())
                 }
             }

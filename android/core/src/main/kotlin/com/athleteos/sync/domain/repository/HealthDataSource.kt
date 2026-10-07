@@ -23,6 +23,12 @@ interface HealthDataSource {
     suspend fun changes(type: String, token: String): ChangePage
     /** All pages must succeed and permissions must remain granted before returning a complete snapshot. */
     suspend fun snapshot(type: String, from: Instant, until: Instant): Snapshot
+    /** Persist pages without advancing the checkpoint; reconcile only after all pages succeed. */
+    suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit): Snapshot {
+        val snapshot = snapshot(type, from, until)
+        consume(snapshot.changes)
+        return snapshot.copy(changes = emptyList())
+    }
     /** Reset reconciles previously observed records even when they are outside the readable time window. */
     suspend fun inspectKnown(type: String, sourceUids: List<String>): List<SourceChange>
 }

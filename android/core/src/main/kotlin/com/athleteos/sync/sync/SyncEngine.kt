@@ -45,6 +45,11 @@ class SyncEngine(
             checked
         }
         store.recoverQueue(user)
+        suspend fun snapshot(source: HealthDataSource, type: String, from: Instant, until: Instant): Snapshot =
+            source.streamSnapshot(type, from, until) { changes ->
+                read += changes.size
+                store.apply(user, source.provider, type, safe(changes), null)
+            }
         for (source in sources) for (type in source.recordTypes) {
             val sourceKey = "${source.provider}:$type"
             val failuresBefore = failures
@@ -64,8 +69,7 @@ class SyncEngine(
                 if (checkpoint == null) {
                     // Create cursor BEFORE snapshot so updates during bootstrap are replayed.
                     val token = source.newToken(type)
-                    val snapshot = source.snapshot(type, Instant.EPOCH, clock.instant())
-                    read += snapshot.changes.size
+                    val snapshot = snapshot(source, type, Instant.EPOCH, clock.instant())
                     checkpoint = Checkpoint(token)
                     store.apply(user, source.provider, type, safe(snapshot.changes), checkpoint, snapshot)
                 }
@@ -77,8 +81,8 @@ class SyncEngine(
                         check(++resets <= 1) { "REPEATED_TOKEN_EXPIRY" }
                         val token = source.newToken(type)
                         val known = source.inspectKnown(type, store.knownIds(user, source.provider, type))
-                        val snapshot = source.snapshot(type, Instant.EPOCH, clock.instant())
-                        read += known.size + snapshot.changes.size
+                        val snapshot = snapshot(source, type, Instant.EPOCH, clock.instant())
+                        read += known.size
                         checkpoint = Checkpoint(token, checkpoint.dailyReconciledAt)
                         store.apply(user, source.provider, type, safe(known + snapshot.changes), checkpoint, snapshot)
                         more = true
@@ -93,8 +97,7 @@ class SyncEngine(
                 val daily = sevenDays || checkpoint!!.dailyReconciledAt == null ||
                     Duration.between(checkpoint.dailyReconciledAt, started) >= Duration.ofDays(1)
                 val window = started.minus(Duration.ofHours(if (daily) 168 else 72))
-                val snapshot = source.snapshot(type, window, started)
-                read += snapshot.changes.size
+                val snapshot = snapshot(source, type, window, started)
                 checkpoint = checkpoint.copy(dailyReconciledAt = if (daily) started else checkpoint.dailyReconciledAt)
                 store.apply(user, source.provider, type, safe(snapshot.changes), checkpoint, snapshot)
                 sourceResults[sourceKey] = if (failures == failuresBefore) "SUCCESS" else "QUARANTINED"

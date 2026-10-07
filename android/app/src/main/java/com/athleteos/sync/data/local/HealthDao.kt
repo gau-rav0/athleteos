@@ -8,6 +8,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HealthDao {
+    @Query("SELECT sourceRecordId FROM raw_health_records WHERE userId = :user AND provider = :provider AND recordType = :type AND deleted = 0")
+    suspend fun liveSourceIds(user: String, provider: String, type: String): List<String>
+    @Query("SELECT sourceRecordId FROM raw_health_records WHERE userId = :user AND provider = :provider AND recordType = :type AND deleted = 0 AND startTimeUtc >= :from AND startTimeUtc < :until")
+    suspend fun windowSourceIds(user: String, provider: String, type: String, from: String, until: String): List<String>
     @Query("SELECT * FROM raw_health_records WHERE id = :id AND userId = :user")
     suspend fun record(user: String, id: String): RawHealthRecordEntity?
     @Query("SELECT * FROM raw_health_records WHERE userId = :user AND provider = :provider AND recordType = :type")

@@ -59,6 +59,7 @@ private class FakeSource(var data: List<HealthRecord> = listOf(sample())) : Heal
     var pages = ArrayDeque<ChangePage>()
     var access = SourceAvailability.AVAILABLE
     var snapshotFails = false
+    var failAfterFirstPage = false
     var tokenCount = 0
     var tokenHook: () -> Unit = {}
     val windows = mutableListOf<Instant>()
@@ -71,6 +72,13 @@ private class FakeSource(var data: List<HealthRecord> = listOf(sample())) : Heal
         if (snapshotFails) error("READ_FAILED")
         val records = data.filter { Instant.parse(it.startTime) >= from && Instant.parse(it.startTime) < until }
         return Snapshot(records.map { SourceChange.Upsert(it) }, records.map { it.sourceUid }.toSet(), from, until)
+    }
+    override suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit): Snapshot {
+        if (failAfterFirstPage) {
+            consume(data.take(1).map { SourceChange.Upsert(it) })
+            error("SECOND_PAGE_FAILED")
+        }
+        return super.streamSnapshot(type, from, until, consume)
     }
     override suspend fun inspectKnown(type: String, sourceUids: List<String>) = sourceUids.filterNot { uid -> data.any { it.sourceUid == uid } }.map { SourceChange.Delete(it) }
 }
@@ -87,6 +95,15 @@ private class FakeUpload(private val store: MemoryStore) : UploadClient {
 }
 
 class ReliabilityTest {
+    @Test fun failedSnapshotPageKeepsPersistedRecordsWithoutAdvancingCheckpointOrInferringDeletion() = runTest {
+        val store = MemoryStore()
+        store.apply("u", "health_connect", "steps", listOf(SourceChange.Upsert(sample("existing"))), null, null)
+        val source = FakeSource(listOf(sample("first-page"))).apply { failAfterFirstPage = true }
+        engine(source, store, FakeUpload(store)).run("u")
+        assertEquals(setOf("existing", "first-page"), store.records.values.map { it.record.sourceUid }.toSet())
+        assertTrue(store.records.values.none { it.record.deleted })
+        assertTrue(store.checkpoints.isEmpty())
+    }
     @Test fun foregroundSyncDoesNotProcessRecordsOnTheCallingThread() = runTest {
         val caller = Thread.currentThread()
         val source = FakeSource()

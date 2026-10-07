@@ -7,6 +7,24 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
 class SamsungBridgeTest {
+    @Test fun snapshotPersistsEachPageBeforeRequestingTheNextPage() = runTest {
+        val reader = FakeReader()
+        val persisted = mutableListOf<String>()
+        reader.onRead = { token, _ ->
+            if (token == null) SamsungReadPage(listOf(point("first")), "second")
+            else {
+                assertEquals(listOf("first"), persisted)
+                SamsungReadPage(listOf(point("second")))
+            }
+        }
+        val summary = SamsungBridge(reader).streamSnapshot("sleep", start, start.plusSeconds(1)) { page ->
+            persisted.addAll(page.map { (it as SourceChange.Upsert).record.sourceUid })
+        }
+        assertEquals(listOf("first", "second"), persisted)
+        assertEquals(setOf("first", "second"), summary.seenIds)
+        assertTrue(summary.changes.isEmpty())
+        assertFalse(summary.reconcileMissing)
+    }
     private val start = Instant.parse("2025-01-01T00:00:00Z")
     private fun point(id: String = "synthetic-id") = SamsungRawPoint(id, start, updateTime = start)
     private class FakeReader : SamsungReader {

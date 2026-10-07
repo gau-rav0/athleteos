@@ -94,10 +94,23 @@ class SamsungBridge(private val reader: SamsungReader, private val clock: () -> 
         return ChangePage(changes, encode(next), !page.nextPage.isNullOrEmpty())
     }
     override suspend fun snapshot(type: String, from: Instant, until: Instant): Snapshot {
+        val result = mutableListOf<SourceChange>()
+        return streamSnapshot(type, from, until) { result.addAll(it) }.copy(changes = result)
+    }
+    override suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit): Snapshot {
         requirePermission(type)
-        val points = readAll(type, from, until, null)
+        val seen = mutableSetOf<String>()
+        val visited = mutableSetOf<String>()
+        var token: String? = null
+        do {
+            val page = reader.read(type, from, until, token, null)
+            seen.addAll(page.points.map { it.uid })
+            consume(page.points.map { convert(type, it) })
+            token = page.nextPage?.takeIf { it.isNotEmpty() }
+            if (token != null) check(visited.add(token)) { "SAMSUNG_NON_ADVANCING_PAGE" }
+        } while (token != null)
         requirePermission(type)
-        return Snapshot(points.map { convert(type, it) }, points.map { it.uid }.toSet(), from, until, reconcileMissing = false)
+        return Snapshot(emptyList(), seen, from, until, reconcileMissing = false)
     }
     private suspend fun readAll(type: String, from: Instant, until: Instant, ids: List<String>?): List<SamsungRawPoint> {
         val result = mutableListOf<SamsungRawPoint>()

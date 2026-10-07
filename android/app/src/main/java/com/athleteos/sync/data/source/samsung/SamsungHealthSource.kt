@@ -11,6 +11,11 @@ interface SamsungSdkBridge {
     suspend fun newToken(type: String): String
     suspend fun changes(type: String, token: String): ChangePage
     suspend fun snapshot(type: String, from: Instant, until: Instant): Snapshot
+    suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit): Snapshot {
+        val snapshot = snapshot(type, from, until)
+        consume(snapshot.changes)
+        return snapshot.copy(changes = emptyList())
+    }
     suspend fun inspectKnown(type: String, ids: List<String>): List<SourceChange>
 }
 
@@ -26,5 +31,6 @@ class SamsungHealthSource(private val bridge: SamsungSdkBridge? = null) : Health
     override suspend fun newToken(type: String) = required().newToken(type)
     override suspend fun changes(type: String, token: String) = required().changes(type, token)
     override suspend fun snapshot(type: String, from: Instant, until: Instant) = required().snapshot(type, from, until)
+    override suspend fun streamSnapshot(type: String, from: Instant, until: Instant, consume: suspend (List<SourceChange>) -> Unit) = required().streamSnapshot(type, from, until, consume)
     override suspend fun inspectKnown(type: String, sourceUids: List<String>) = required().inspectKnown(type, sourceUids)
 }

@@ -62,14 +62,14 @@ private class SamsungSdkReader(private val context: Context) : SamsungReader {
         }
         val request = when (builder) {
             is ReadDataRequest.DualTimeBuilder -> {
-                builder.setPageSize(500)
+                builder.setPageSize(25)
                 if (pageToken != null) builder.setPageToken(pageToken)
                 if (idFilter != null) builder.setIdFilter(idFilter)
                 else builder.setInstantTimeFilter(InstantTimeFilter.of(from, until, true, true))
                 builder.build()
             }
             is ReadDataRequest.LocalDateBuilder -> {
-                builder.setPageSize(500)
+                builder.setPageSize(25)
                 if (pageToken != null) builder.setPageToken(pageToken)
                 if (idFilter != null) builder.setIdFilter(idFilter)
                 // Expand by one day for offsets up to +/-18h, then filter authoritative instants below.

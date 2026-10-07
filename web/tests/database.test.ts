@@ -1,20 +1,176 @@
-import {beforeAll,afterAll,describe,it,expect} from "vitest";
-import {PGlite} from "@electric-sql/pglite";
-import {readFileSync} from "node:fs";
-import {resolve} from "node:path";
-const owner="00000000-0000-4000-8000-000000000001",other="00000000-0000-4000-8000-000000000002";
-let db:PGlite;
-async function user(id:string){await db.exec("reset role");await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id]);await db.exec("set role authenticated");}
-async function refresh(){return db.query<{result:{processed:number;remaining:boolean}}>("select public.refresh_web_facts('2025-01-01Z','2025-02-01Z',1000) result");}
-describe("authenticated SQL projections",()=>{
- beforeAll(async()=>{db=new PGlite();await db.exec("create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;");for(const name of ["0001_phase1.sql","0002_phase1_ingestion.sql","0003_payload_wire_size.sql","0004_dense_payloads.sql","0005_web_dashboard_facts.sql"]){let sql=readFileSync(resolve("../supabase/migrations",name),"utf8");sql=sql.replace("create extension if not exists pgcrypto;","");await db.exec(sql);}await db.query("insert into auth.users values($1),($2)",[owner,other]);await db.query("insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) values($1,'health_connect','steps','synthetic-step','2025-01-10T00:00Z','2025-01-10T01:00Z',$2)",[owner,JSON.stringify({metadata:{},count:100})]);});
- afterAll(async()=>{await db.close();});
- it("normalizes source schema and caches compact facts",async()=>{await user(owner);const result=await refresh();expect(result.rows[0].result.processed).toBe(1);const rows=await db.query<{result:{value:number;kind:string}[]}>("select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result");expect(rows.rows[0].result[0].value).toBe(100);expect(rows.rows[0].result[0].kind).toBe("steps");});
- it("is idempotent when no raw revision changes",async()=>{await user(owner);expect((await refresh()).rows[0].result.processed).toBe(0);});
- it("isolates a second authenticated user and rejects anonymous calls",async()=>{await user(other);expect((await db.query<{result:unknown[]}>("select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result")).rows[0].result).toEqual([]);expect((await db.query<{result:{inventory:unknown[]}}>("select public.web_inventory('UTC') result")).rows[0].result.inventory).toEqual([]);await db.exec("reset role;set role anon");await expect(refresh()).rejects.toThrow();await db.exec("reset role");});
- it("rejects invalid windows and offsets",async()=>{await user(owner);await expect(db.query("select public.refresh_web_facts('2020-01-01Z','2025-01-01Z',1000)")).rejects.toThrow();await expect(db.query("select public.web_facts_page('2025-01-01Z','2025-02-01Z',-1)")).rejects.toThrow();});
- it("invalidates updates and excludes tombstones immediately",async()=>{await user(owner);await db.exec("update public.raw_health_records set payload='{\"metadata\":{},\"count\":200}',received_at=received_at+interval '1 second'");expect((await db.query<{result:unknown[]}>("select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result")).rows[0].result).toEqual([]);await refresh();await db.exec("update public.raw_health_records set deleted=true");expect((await db.query<{result:unknown[]}>("select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result")).rows[0].result).toEqual([]);});
- it("keeps proprietary Samsung HRV separate from RMSSD",async()=>{await db.exec("reset role");await db.query("insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,payload) values($1,'samsung_health','energy_score','synthetic-vendor','2025-01-11T00:00Z',$2)",[owner,JSON.stringify({sdk_version:"1.1.0",fields:{total_score:70,shrv_value:999}})]);await user(owner);await refresh();const rows=await db.query<{result:{kind:string;value:number}[]}>("select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result");expect(rows.rows[0].result[0].kind).toBe("energy_score");expect(rows.rows[0].result[0].value).toBe(70);});
- it("summarizes massive HC samples without returning raw arrays",async()=>{await db.exec("reset role");const samples=Array.from({length:15000},(_,i)=>({time:new Date(Date.parse("2025-01-12T01:00Z")+i*1000).toISOString(),beats_per_minute:60+i%5}));await db.query("insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) values($1,'health_connect','heart_rate','synthetic-dense','2025-01-12T00:00Z','2025-01-12T06:00Z',$2)",[owner,JSON.stringify({metadata:{},samples})]);await user(owner);await refresh();const rows=await db.query<{fact:{samples:number;hourly:unknown[]}}>("select fact from public.web_health_facts where fact->>'kind'='heart_rate'");expect(rows.rows[0].fact.samples).toBe(15000);expect(rows.rows[0].fact.hourly.length).toBeLessThan(7);expect(JSON.stringify(rows.rows[0].fact).length).toBeLessThan(3000);});
- it("uses indexed bounded windows with 200,000 synthetic raw records",async()=>{await db.exec("reset role");await db.query("insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) select $1,'health_connect','steps','synthetic-bulk-'||i, '2023-01-01T00:00Z'::timestamptz+i*interval '5 minutes','2023-01-01T00:00Z'::timestamptz+(i+1)*interval '5 minutes','{\"metadata\":{},\"count\":100}'::jsonb from generate_series(1,200000) i",[owner]);await user(owner);const start=performance.now();const result=await db.query<{result:{processed:number}}>("select public.refresh_web_facts('2023-01-01Z','2023-02-01Z',1000) result");expect(result.rows[0].result.processed).toBe(1000);const page=await db.query<{result:unknown[]}>("select public.web_facts_page('2023-01-01Z','2023-02-01Z',0) result");expect(page.rows[0].result.length).toBe(1000);console.info(JSON.stringify({syntheticRawRecords:200000,refreshAndPageMs:Math.round(performance.now()-start),compactPageBytes:JSON.stringify(page.rows[0].result).length}));});
+import { beforeAll, afterAll, describe, it, expect } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const owner = "00000000-0000-4000-8000-000000000001",
+  other = "00000000-0000-4000-8000-000000000002";
+let db: PGlite;
+async function user(id: string) {
+  await db.exec("reset role");
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)", [id]);
+  await db.exec("set role authenticated");
+}
+async function refresh() {
+  return db.query<{ result: { processed: number; remaining: boolean } }>(
+    "select public.refresh_web_facts('2025-01-01Z','2025-02-01Z',1000) result",
+  );
+}
+describe("authenticated SQL projections", () => {
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(
+      "create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;",
+    );
+    for (const name of [
+      "0001_phase1.sql",
+      "0002_phase1_ingestion.sql",
+      "0003_payload_wire_size.sql",
+      "0004_dense_payloads.sql",
+      "0005_web_dashboard_facts.sql",
+    ]) {
+      let sql = readFileSync(resolve("../supabase/migrations", name), "utf8");
+      sql = sql.replace("create extension if not exists pgcrypto;", "");
+      await db.exec(sql);
+    }
+    await db.query("insert into auth.users values($1),($2)", [owner, other]);
+    await db.query(
+      "insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) values($1,'health_connect','steps','synthetic-step','2025-01-10T00:00Z','2025-01-10T01:00Z',$2)",
+      [owner, JSON.stringify({ metadata: {}, count: 100 })],
+    );
+  });
+  afterAll(async () => {
+    await db.close();
+  });
+  it("normalizes source schema and caches compact facts", async () => {
+    await user(owner);
+    const result = await refresh();
+    expect(result.rows[0].result.processed).toBe(1);
+    const rows = await db.query<{ result: { value: number; kind: string }[] }>(
+      "select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result",
+    );
+    expect(rows.rows[0].result[0].value).toBe(100);
+    expect(rows.rows[0].result[0].kind).toBe("steps");
+  });
+  it("is idempotent when no raw revision changes", async () => {
+    await user(owner);
+    expect((await refresh()).rows[0].result.processed).toBe(0);
+  });
+  it("isolates a second authenticated user and rejects anonymous calls", async () => {
+    await user(other);
+    expect(
+      (
+        await db.query<{ result: unknown[] }>(
+          "select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result",
+        )
+      ).rows[0].result,
+    ).toEqual([]);
+    expect(
+      (
+        await db.query<{ result: { inventory: unknown[] } }>(
+          "select public.web_inventory('UTC') result",
+        )
+      ).rows[0].result.inventory,
+    ).toEqual([]);
+    await db.exec("reset role;set role anon");
+    await expect(refresh()).rejects.toThrow();
+    await db.exec("reset role");
+  });
+  it("rejects invalid windows and offsets", async () => {
+    await user(owner);
+    await expect(
+      db.query(
+        "select public.refresh_web_facts('2020-01-01Z','2025-01-01Z',1000)",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      db.query("select public.web_facts_page('2025-01-01Z','2025-02-01Z',-1)"),
+    ).rejects.toThrow();
+  });
+  it("invalidates updates and excludes tombstones immediately", async () => {
+    await user(owner);
+    await db.exec(
+      "update public.raw_health_records set payload='{\"metadata\":{},\"count\":200}',received_at=received_at+interval '1 second'",
+    );
+    expect(
+      (
+        await db.query<{ result: unknown[] }>(
+          "select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result",
+        )
+      ).rows[0].result,
+    ).toEqual([]);
+    await refresh();
+    await db.exec("update public.raw_health_records set deleted=true");
+    expect(
+      (
+        await db.query<{ result: unknown[] }>(
+          "select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result",
+        )
+      ).rows[0].result,
+    ).toEqual([]);
+  });
+  it("keeps proprietary Samsung HRV separate from RMSSD", async () => {
+    await db.exec("reset role");
+    await db.query(
+      "insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,payload) values($1,'samsung_health','energy_score','synthetic-vendor','2025-01-11T00:00Z',$2)",
+      [
+        owner,
+        JSON.stringify({
+          sdk_version: "1.1.0",
+          fields: { total_score: 70, shrv_value: 999 },
+        }),
+      ],
+    );
+    await user(owner);
+    await refresh();
+    const rows = await db.query<{ result: { kind: string; value: number }[] }>(
+      "select public.web_facts_page('2025-01-01Z','2025-02-01Z',0) result",
+    );
+    expect(rows.rows[0].result[0].kind).toBe("energy_score");
+    expect(rows.rows[0].result[0].value).toBe(70);
+  });
+  it("summarizes massive HC samples without returning raw arrays", async () => {
+    await db.exec("reset role");
+    const samples = Array.from({ length: 15000 }, (_, i) => ({
+      time: new Date(Date.parse("2025-01-12T01:00Z") + i * 1000).toISOString(),
+      beats_per_minute: 60 + (i % 5),
+    }));
+    await db.query(
+      "insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) values($1,'health_connect','heart_rate','synthetic-dense','2025-01-12T00:00Z','2025-01-12T06:00Z',$2)",
+      [owner, JSON.stringify({ metadata: {}, samples })],
+    );
+    await user(owner);
+    await refresh();
+    const rows = await db.query<{
+      fact: { samples: number; hourly: unknown[] };
+    }>(
+      "select fact from public.web_health_facts where fact->>'kind'='heart_rate'",
+    );
+    expect(rows.rows[0].fact.samples).toBe(15000);
+    expect(rows.rows[0].fact.hourly.length).toBeLessThan(7);
+    expect(JSON.stringify(rows.rows[0].fact).length).toBeLessThan(3000);
+  });
+  it("uses indexed bounded windows with 200,000 synthetic raw records", async () => {
+    await db.exec("reset role");
+    await db.query(
+      "insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) select $1,'health_connect','steps','synthetic-bulk-'||i, '2023-01-01T00:00Z'::timestamptz+i*interval '5 minutes','2023-01-01T00:00Z'::timestamptz+(i+1)*interval '5 minutes','{\"metadata\":{},\"count\":100}'::jsonb from generate_series(1,200000) i",
+      [owner],
+    );
+    await user(owner);
+    const start = performance.now();
+    const result = await db.query<{ result: { processed: number } }>(
+      "select public.refresh_web_facts('2023-01-01Z','2023-02-01Z',1000) result",
+    );
+    expect(result.rows[0].result.processed).toBe(1000);
+    const page = await db.query<{ result: unknown[] }>(
+      "select public.web_facts_page('2023-01-01Z','2023-02-01Z',0) result",
+    );
+    expect(page.rows[0].result.length).toBe(1000);
+    console.info(
+      JSON.stringify({
+        syntheticRawRecords: 200000,
+        refreshAndPageMs: Math.round(performance.now() - start),
+        compactPageBytes: JSON.stringify(page.rows[0].result).length,
+      }),
+    );
+  });
 });

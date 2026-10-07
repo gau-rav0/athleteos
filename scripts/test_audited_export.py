@@ -82,6 +82,22 @@ class AuditedExportTest(unittest.TestCase):
             report["totals"],
         )
 
+    def test_payload_limit_measures_compact_utf8_without_removing_string_spaces(self):
+        # Invented wide schema: pretty JSON exceeds the limit, wire JSON fits.
+        fields = {f"synthetic_{i}": "space preserved é" for i in range(45500)}
+        fields.update(datauuid="synthetic-wide", start_time="2025-01-01T00:00:00Z")
+        self.write("heart_rate", [list(fields.values()) + [""]], header=list(fields))
+        result = importer.normalize(self.export, self.state)
+        self.assertEqual(1, result["normalized"])
+        payload = self.read_records()[0]["payload"]
+        compact = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":")
+        ).encode()
+        pretty = json.dumps(payload, ensure_ascii=False).encode()
+        self.assertLessEqual(len(compact), 1835008)
+        self.assertGreater(len(pretty), 1835008)
+        self.assertEqual("space preserved é", payload["raw"]["synthetic_0"])
+
     def test_existing_state_dry_run_does_not_change_revision(self):
         self.write(
             "sleep", [["a", "2025-01-01T00:00:00Z", "synthetic-package", "watch", ""]]

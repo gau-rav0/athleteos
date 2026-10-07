@@ -314,7 +314,9 @@ def normalize(
                         if (
                             len(
                                 json.dumps(
-                                    record["payload"], ensure_ascii=False
+                                    record["payload"],
+                                    ensure_ascii=False,
+                                    separators=(",", ":"),
                                 ).encode()
                             )
                             > 1835008

@@ -1,10 +1,10 @@
-# Physical Phase 1 acceptance gate — not yet run
+# Physical Phase 1 acceptance gate — in progress
 
-Do not begin Phases 2–6 until seven consecutive days pass without unexplained missing data. No Samsung phone, Watch6, real Health Connect installation, private export or deployed Supabase project has been tested by this implementation session.
+Do not begin Phases 2–6 until seven consecutive days pass without unexplained missing data. Physical validation started on the S21 FE on 2026-10-08. Health Connect records have reached the deployed backend, and the direct Samsung SDK history read is running with granted permissions. The user confirmed Watch6 connection and recent activity visible in Samsung Health. This does not certify complete capture, repeat-sync idempotency, offline/reboot recovery or the seven-day gate. The private historical export has not been imported during this validation.
 
 Record observations privately. Keep actual health values, screenshots, export files and JWTs out of this public repository. Share only redacted codes/counts when debugging.
 
-1. **Setup:** deploy both migrations/function, create a confirmed Auth account, install the debug APK, enable Samsung → Health Connect sharing, grant reads. Build with the locally ignored official SDK 1.1.0 AAR for the Samsung bridge; configure Samsung authorization and grant its read permissions independently.
+1. **Setup:** deploy all current migrations/function, create a confirmed Auth account, install the debug APK, enable Samsung → Health Connect sharing, grant reads. Build with the locally ignored official SDK 1.1.0 AAR for the Samsung bridge; configure Samsung authorization and grant its read permissions independently.
 2. **Type inventory:** verify each supported source type against Samsung Health. For SDK 1.1.0, Samsung raw Steps/Activity Summary and User Profile remain UNSUPPORTED for the reasons in SAMSUNG_SDK_API.md; validate Health Connect steps separately. A type with no observations shows MISSING; unavailable API shows UNSUPPORTED; denied permission shows PERMISSION_REQUIRED. Real RMSSD is required for HRV. Do not use Samsung Energy Score as RMSSD. Check sleep stages separately from sleep sessions.
 3. **Provenance:** privately inspect representative local/server records: provider, vendor ID, device metadata, original start/end offsets, created/modified timestamps and raw payload. Health Connect often supplies no physical device UID; it must stay null.
 4. **Duplicate/update:** sync the same interval repeatedly. The unique server identity count must not grow. Edit/finalize a supported source record; its row updates and the local queue drains. Samsung and Health Connect versions remain distinct.

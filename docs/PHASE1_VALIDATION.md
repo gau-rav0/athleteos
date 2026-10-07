@@ -1,6 +1,13 @@
 # Phase 1 implementation validation — 2026-10-06
 
-The current code passes the automated checks below. Phase 1 acceptance remains pending: no real Samsung phone/watch, Health Connect installation, private export or deployed Supabase project was exercised. No Phase 2–6 analytics were implemented.
+The original implementation checks below describe the 2026-10-06 baseline. Physical validation and deployment began subsequently; see the dated update below. Phase 1 acceptance remains pending. No Phase 2–6 analytics were implemented.
+
+## Physical validation update — 2026-10-08
+
+- The Samsung-enabled Android `test lint assembleDebug` tasks pass after fixes for foreground-thread blocking, bounded source pagination, the local SDK's Parcelize runtime dependency and dense payload recovery. There were 94 Android test executions with no failures. The Edge Function has nine passing tests; TypeScript check and lint pass. The importer now has 24 passing synthetic tests, including compact UTF-8 payload size accounting that preserves whitespace inside strings.
+- Supabase migrations 0001–0004 and the authenticated sync-batch function are deployed. Synthetic SQL tests cover compact JSON wire size and the dense payload boundary, using rolled-back transactions. Real authenticated Health Connect uploads have succeeded.
+- The debug app is installed on the S21 FE. Health Connect read permissions and eight supported Samsung SDK type permissions are granted. Samsung SDK records are being persisted into Room; the initial Samsung history read/upload has not yet been certified complete. Previously quarantined dense records were recovered locally. The user confirmed the Watch6 is connected and recent activity is visible in Samsung Health.
+- Repeat-sync identity checks, offline/reboot recovery, automatic background observation and seven consecutive clean days remain pending. Real historical export import and actual export/live UID continuity also remain pending. No personal export, raw readings, credentials or SDK binary were added to Git.
 
 ## Passed
 

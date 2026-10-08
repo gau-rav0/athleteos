@@ -113,3 +113,19 @@ test("cursor precision is exact to six fractional digits with equivalent offsets
   expect(cursorEpochMicroseconds("2025-01-01T00:00:00.0000001Z")).toBeNull();
   expect(cursorEpochMicroseconds("2025-01-01")).toBeNull();
 });
+
+test("optional SQL timing is finite and cannot invalidate or change valid records", () => {
+  const base = decodeCompactPage(envelope([record]));
+  expect(base.sqlMs).toBeNull();
+  for (const value of [0, 2.5]) {
+    const timed = decodeCompactPage({ ...envelope([record]), sql_ms: value });
+    expect(timed.sqlMs).toBe(value);
+    expect(timed.facts).toEqual(base.facts);
+  }
+  for (const value of [-1, Infinity, NaN, "1", null, {}]) {
+    const timed = decodeCompactPage({ ...envelope([record]), sql_ms: value });
+    expect(timed.sqlMs).toBeNull();
+    expect(timed.facts).toEqual(base.facts);
+    expect(timed.invalid).toBe(0);
+  }
+});

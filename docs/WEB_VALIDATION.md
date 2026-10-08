@@ -144,3 +144,16 @@ All 137 unit/database tests passed, including 11 budget SQL regressions with inv
 Source c917ac1 and migration 0011 are deployed READY in Tokyo. Hosted synthetic matrix passed 40/40 and anonymous security 7/7. Actual yearly data remains partial; reliability acceptance stays open. Earlier browser failure/focused rerun evidence above remains applicable; this entry does not claim a new clean full browser run.
 
 Migration 0012 dry-run listed only the new migration; application succeeded. Production metadata confirms invoker semantics, authenticated execution and denied anonymous execution. Source 163d210 deployed READY as dpl_FLcXGebxU9hSsWbfj7hAk59KGcTW; CLI inspect verifies hnd1 functions. Fresh full browser regression passed 32/32; authenticated acceptance continues. No source ingestion/phone queue or historical import was performed.
+
+
+## Streaming tuple prefix — 8 October 2026
+
+Source 536ce67 is pushed; migration 0013 dry-run and application succeeded. Production metadata confirms streaming implementation, invoker semantics, authenticated execution and denied anonymous execution. No Vercel consumer change was needed for the unchanged wire contract. Full unit/database suite passed 147/147; TypeScript and ESLint passed. Ten SQL tests compare entire envelopes against the frozen 0011 implementation, including byte-limited UTF8, all identities, canonical microseconds/ties, invalid originals, updates, deletions and RLS. One fixture-isolation issue was corrected before the focused suite passed; its March/May rows had incorrectly affected January-only test mutations.
+
+Invented local benchmark: byte-limited 1,901-record prefix improved from 366/360 ms to 89/88 ms; ordinary 8,000-record pages improved from 284/246 ms to 209/199 ms. These are local CPU comparisons, not production guarantees. Actual yearly reads still reached the serving budget and returned labelled partial data. All five checked yearly screens rendered every expected chart with finite marks, zero alerts and distinct refreshed responses. A checked ninety-day response completed after subsequent processing. Reliability acceptance remains open.
+
+## Read-stage instrumentation integration
+
+The next additive migration 0014 appends only optional SQL construction timing. The consumer measures response validation separately and treats missing/invalid diagnostic timing as unavailable without discarding valid records. Failed continuation preserves partial observations and makes aggregate SQL timing unknown. No source/model, pagination cap or permission changes are part of this milestone.
+
+The initial focused consumer run passed 37/38; the remaining assertion enumerated the earlier timing fields. It was updated to require the exact new field set, explicit unknown SQL timing and finite remaining counters. The focused rerun passed 38/38. Full integration now passes 163/163 unit/database tests, TypeScript, full ESLint and production build (one build worker). The fresh full desktop/mobile browser run passed 32/32. Existing cases do not explicitly assert the new private-fixture timing caption, so a targeted drawer check is being added before claiming that specific UI coverage. Deployment follows.

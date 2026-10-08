@@ -110,6 +110,8 @@ export type Dataset = {
     statusMs: number;
     inventoryMs: number;
     pageMs: number;
+    decodeMs?: number;
+    sqlMs?: number | null;
   };
   excludedOverlaps: number;
 };

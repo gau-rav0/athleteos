@@ -45,7 +45,11 @@ export async function loadDashboard(
   const metadataStarted = performance.now();
   let statusMs = 0,
     inventoryMs = 0,
-    pageMs = 0;
+    pageMs = 0,
+    decodeMs = 0,
+    sqlMs = 0,
+    timedPages = 0,
+    sqlTimingAvailable = true;
   // Start metadata concurrently with fact pages. A slow coverage aggregation
   // must not add another full network round trip before read serving begins.
   const metadataPromise = Promise.allSettled([
@@ -97,6 +101,7 @@ export async function loadDashboard(
       })
       .abortSignal(rpcSignal(pageTimeoutMs, signal));
     pageMs += performance.now() - pageStarted;
+    const decodeStarted = performance.now();
     let decoded: CompactPage | undefined;
     if (!page.error) {
       try {
@@ -122,12 +127,19 @@ export async function loadDashboard(
         // Malformed envelopes fail closed, with no payload in diagnostics.
       }
     }
+    decodeMs += performance.now() - decodeStarted;
     if (page.error || !decoded) {
+      sqlTimingAvailable = false;
       rpcFailure("page", page.error?.code);
       // After at least one valid page, retain its partial snapshot. An initial
       // page failure is a true unavailable response, not an empty health day.
       if (recordsRead === 0) throw new Error("DATA_READ_UNAVAILABLE");
       break;
+    }
+    if (decoded.sqlMs === null) sqlTimingAvailable = false;
+    else {
+      sqlMs += decoded.sqlMs;
+      timedPages++;
     }
     recordsRead += decoded.records;
     finished = !decoded.hasMore;
@@ -200,6 +212,8 @@ export async function loadDashboard(
       statusMs: Math.round(statusMs),
       inventoryMs: Math.round(inventoryMs),
       pageMs: Math.round(pageMs),
+      decodeMs: Math.round(decodeMs),
+      sqlMs: sqlTimingAvailable && timedPages > 0 ? Math.round(sqlMs) : null,
     },
   });
 }

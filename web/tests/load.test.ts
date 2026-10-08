@@ -139,13 +139,18 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   expect(result.partialReasons).toEqual([]);
   expect(Object.keys(result.timings).sort()).toEqual([
     "analyticsMs",
+    "decodeMs",
     "inventoryMs",
     "pageMs",
     "rpcMs",
+    "sqlMs",
     "statusMs",
   ]);
+  expect(result.timings.sqlMs).toBeNull();
+  const { sqlMs: unknownSql, ...measuredTimings } = result.timings;
+  void unknownSql;
   expect(
-    Object.values(result.timings).every(
+    Object.values(measuredTimings).every(
       (value) => Number.isFinite(value) && value >= 0,
     ),
   ).toBe(true);
@@ -522,4 +527,55 @@ test("metadata worker validates its private result and sanitizes failures", asyn
   await expect(refreshInventory(failed.client, "UTC")).rejects.toThrow(
     "INVENTORY_WORK_UNAVAILABLE",
   );
+});
+
+test("SQL timing sums across complete pages, with decoding measured separately", async () => {
+  let tick = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => (tick += 10));
+  const row = fact();
+  const next = { ...row, id: "00000000-0000-4000-8000-000000000009" };
+  const fake = source({
+    ...defaults(),
+    web_tuple_facts_cursor: [
+      success({ ...compact([row], true), sql_ms: 2.5 }),
+      success({ ...compact([next]), sql_ms: 1.5 }),
+    ],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.timings?.sqlMs).toBe(4);
+  expect(result.timings?.decodeMs).toBeGreaterThan(0);
+  expect(result.timings?.pageMs).toBeGreaterThan(0);
+  expect(result.readIncomplete).toBe(false);
+  expect(result.queryCount).toBe(4);
+});
+
+test.each([undefined, -1, "bad"])(
+  "missing or invalid SQL timing stays unknown without losing data: %s",
+  async (sqlMs) => {
+    const row = fact();
+    const fake = source({
+      ...defaults(),
+      web_tuple_facts_cursor: [success({ ...compact([row]), sql_ms: sqlMs })],
+    });
+    const result = await loadDashboard(fake.client, 7, "UTC");
+    expect(result.timings?.sqlMs).toBeNull();
+    expect(result.partial).toBe(false);
+    expect(result.days.at(-1)?.steps).toBe(100);
+  },
+);
+
+test("failed continuation makes aggregate SQL timing unknown, preserving partial records", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const row = fact();
+  const fake = source({
+    ...defaults(),
+    web_tuple_facts_cursor: [
+      success({ ...compact([row], true), sql_ms: 2 }),
+      failure,
+    ],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.timings?.sqlMs).toBeNull();
+  expect(result.readIncomplete).toBe(true);
+  expect(result.days.at(-1)?.steps).toBe(100);
 });

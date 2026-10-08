@@ -4,6 +4,8 @@ The user explicitly resumed; continue development. Source `c917ac1` is pushed an
 
 The next reviewed milestone adds migration 0012: a four-second processing budget committing exact resumable prefixes, with the authenticated caller requesting up to 50 records. All 137 unit/database tests, TypeScript, lint and production build pass. Migration 0012 is applied and source `163d210` is deployed READY in Tokyo. Metadata verifies invoker semantics and denied anonymous execution. A clean full desktop/mobile browser run passes 32/32; authenticated production acceptance is continuing. First-query and individual-record work cannot be preempted safely and remain subject to existing transaction/request timeouts.
 
+Source `536ce67` and migration 0013 are pushed/applied: streaming tuple prefixes preserve complete old/new envelopes while avoiding repeated discarded-suffix encoding. All 147 unit/database tests, TypeScript and lint pass. Actual year reads remain partial; checked plots render correctly. SQL/decoder timing instrumentation (0014) passes 163 unit/database tests, TypeScript, lint and build; the full desktop/mobile browser run passes 32/32. Targeted timing-caption verification and deployment follow before further serving changes. No product or historical gate has been crossed.
+
 The private ZIP remains unopened. Preserve Android queues, original checkout and this feature worktree. Product features follow reliability acceptance; first historical production upload and main merge still require explicit approval. Commit reviewed source milestones to the existing feature branch; main remains unchanged.
 
 ---

@@ -47,3 +47,6 @@ page does not imply completion. Oversized first records still fail explicitly.
 Byte accounting includes PostgreSQL UTF8/escaped JSON and array separators, with
 reserved envelope overhead. This removes repeated field names on the wire; it
 does not change summaries, provider selection, source coverage or database data.
+
+
+Migration 0013 streams the same v2 accepted prefix plus lookahead; records and canonical continuation are unchanged. Migration 0014 optionally reports SQL construction milliseconds in `sql_ms`. Consumers accept older envelopes without this diagnostic. Missing or invalid timing is unknown, never evidence of zero SQL cost, and never grounds for dropping valid health facts. Loader diagnostics separate fact-page RPC, response validation and SQL construction. RPC-minus-SQL includes gateway, serialization and transport overhead rather than pure network time.

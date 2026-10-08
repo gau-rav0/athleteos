@@ -179,6 +179,16 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
           overlap chart reads.
         </p>
       )}
+      {data.timings?.decodeMs !== undefined && (
+        <p className="caption">
+          Fact-page work: {data.timings.pageMs} ms total RPC;{" "}
+          {data.timings.sqlMs === null || data.timings.sqlMs === undefined
+            ? "SQL timing unavailable"
+            : `${data.timings.sqlMs} ms inside SQL`}
+          ; {data.timings.decodeMs} ms validating responses. RPC time also
+          includes database gateway, serialization and transport work.
+        </p>
+      )}
     </>
   );
 }

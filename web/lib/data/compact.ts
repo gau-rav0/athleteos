@@ -41,6 +41,8 @@ const cursorInstant = z
 const envelopeSchema = z
   .object({
     wire_version: z.union([z.literal(1), z.literal(2)]),
+    // Optional diagnostics never invalidate otherwise valid health records.
+    sql_ms: z.unknown().optional(),
     records: z.array(z.unknown()).max(8000),
     has_more: z.boolean(),
     next_start: cursorInstant.nullable(),
@@ -66,6 +68,7 @@ export type CompactPage = {
   hasMore: boolean;
   nextStart: string | null;
   nextId: string | null;
+  sqlMs: number | null;
 };
 
 // Version-gated restoration only: required provenance/identity/timestamp fields
@@ -124,7 +127,9 @@ export function decodeCompactPage(input: unknown): CompactPage {
     if (result.success) facts.push(result.data);
     else invalid++;
   }
+  const sqlTiming = z.number().min(0).safeParse(page.sql_ms);
   return {
+    sqlMs: sqlTiming.success ? sqlTiming.data : null,
     facts,
     invalid,
     records: page.records.length,

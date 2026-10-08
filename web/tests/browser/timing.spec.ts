@@ -106,3 +106,53 @@ test("available synthetic timing counters retain exact numbers in the quality pa
   await page.getByRole("button", { name: "Close panel" }).click();
   await expect(page.locator(chartMarks).first()).toBeVisible();
 });
+
+test("partially measured SQL remains a subset while failed RPC time stays separate", async ({
+  page,
+}) => {
+  await page.route("**/api/dashboard?*", async (route) => {
+    const response = await route.fetch();
+    const snapshot = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...snapshot,
+        timings: {
+          ...snapshot.timings,
+          rpcMs: 211,
+          analyticsMs: 7,
+          pageMs: 211,
+          decodeMs: 3,
+          sqlMs: null,
+          sqlKnownMs: 42,
+          successfulPageMs: 111,
+          failedPageMs: 100,
+          timedPages: 2,
+          untimedPages: 1,
+        },
+      },
+    });
+  });
+  await openQuality(page);
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(/^Fact-page work:/)).toContainText(
+    "211 ms total RPC; SQL timing unavailable; 3 ms validating responses.",
+  );
+  const subset = dialog.getByText(/^Observed SQL:/);
+  await expect(subset).toContainText("42 ms across 2 timed pages");
+  await expect(subset).toContainText("1 page timings unavailable");
+  await expect(subset).toContainText("a measured subset, not total SQL time");
+  await expect(subset).not.toContainText(/NaN|Infinity|undefined/);
+  await expect(dialog.getByText(/42 ms inside SQL/)).toHaveCount(0);
+  await expect(dialog.getByText(/Successful-page RPC:/)).toContainText(
+    "Successful-page RPC: 111 ms; failed-page RPC: 100 ms.",
+  );
+  await expectContainedCaption(page);
+  expect(
+    await subset.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "Close panel" }).click();
+  await expect(page.locator(chartMarks).first()).toBeVisible();
+});

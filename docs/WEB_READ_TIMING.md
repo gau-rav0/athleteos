@@ -27,3 +27,6 @@ with the instrumented result after removing `sql_ms`. They cover 8,000-row and
 byte-limited pages, UTF8 escaping, exact full-envelope byte bounds, malformed
 originals, oversized first facts, microsecond/tie cursors, empty results,
 revision/deletion filtering, cross-owner isolation and anonymous/input rejection.
+
+
+Partial continuation diagnostics preserve measured SQL only for completed, valid timed pages. Total SQL remains unavailable if any page lacks valid timing. `sqlKnownMs`, `timedPages` and `untimedPages` label the measured subset; successful-page and failed-page RPC durations are reported separately. A failed continuation wait must not be attributed to SQL cost or pure network overhead. Missing counters never imply zero SQL work. Pathological nonfinite, negative or greater-than-ten-minute diagnostic values are treated as unknown without rejecting valid health facts; health/request limits are unchanged.

@@ -140,11 +140,16 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   expect(Object.keys(result.timings).sort()).toEqual([
     "analyticsMs",
     "decodeMs",
+    "failedPageMs",
     "inventoryMs",
     "pageMs",
     "rpcMs",
+    "sqlKnownMs",
     "sqlMs",
     "statusMs",
+    "successfulPageMs",
+    "timedPages",
+    "untimedPages",
   ]);
   expect(result.timings.sqlMs).toBeNull();
   const { sqlMs: unknownSql, ...measuredTimings } = result.timings;
@@ -543,6 +548,11 @@ test("SQL timing sums across complete pages, with decoding measured separately",
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.timings?.sqlMs).toBe(4);
+  expect(result.timings?.sqlKnownMs).toBe(4);
+  expect(result.timings?.timedPages).toBe(2);
+  expect(result.timings?.untimedPages).toBe(0);
+  expect(result.timings?.successfulPageMs).toBeGreaterThan(0);
+  expect(result.timings?.failedPageMs).toBe(0);
   expect(result.timings?.decodeMs).toBeGreaterThan(0);
   expect(result.timings?.pageMs).toBeGreaterThan(0);
   expect(result.readIncomplete).toBe(false);
@@ -566,6 +576,8 @@ test.each([undefined, -1, "bad"])(
 
 test("failed continuation makes aggregate SQL timing unknown, preserving partial records", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
+  let tick = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => (tick += 10));
   const row = fact();
   const fake = source({
     ...defaults(),
@@ -576,6 +588,14 @@ test("failed continuation makes aggregate SQL timing unknown, preserving partial
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.timings?.sqlMs).toBeNull();
+  expect(result.timings?.sqlKnownMs).toBe(2);
+  expect(result.timings?.timedPages).toBe(1);
+  expect(result.timings?.untimedPages).toBe(1);
+  expect(result.timings?.successfulPageMs).toBeGreaterThan(0);
+  expect(result.timings?.failedPageMs).toBeGreaterThan(0);
+  expect(result.timings!.successfulPageMs + result.timings!.failedPageMs).toBe(
+    result.timings?.pageMs,
+  );
   expect(result.readIncomplete).toBe(true);
   expect(result.days.at(-1)?.steps).toBe(100);
 });

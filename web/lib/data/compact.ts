@@ -127,7 +127,7 @@ export function decodeCompactPage(input: unknown): CompactPage {
     if (result.success) facts.push(result.data);
     else invalid++;
   }
-  const sqlTiming = z.number().min(0).safeParse(page.sql_ms);
+  const sqlTiming = z.number().min(0).max(600000).safeParse(page.sql_ms);
   return {
     sqlMs: sqlTiming.success ? sqlTiming.data : null,
     facts,

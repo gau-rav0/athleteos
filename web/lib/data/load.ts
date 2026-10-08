@@ -46,9 +46,12 @@ export async function loadDashboard(
   let statusMs = 0,
     inventoryMs = 0,
     pageMs = 0,
+    successfulPageMs = 0,
+    failedPageMs = 0,
     decodeMs = 0,
     sqlMs = 0,
     timedPages = 0,
+    untimedPages = 0,
     sqlTimingAvailable = true;
   // Start metadata concurrently with fact pages. A slow coverage aggregation
   // must not add another full network round trip before read serving begins.
@@ -100,7 +103,8 @@ export async function loadDashboard(
         p_limit: Math.min(8000, 100000 - recordsRead),
       })
       .abortSignal(rpcSignal(pageTimeoutMs, signal));
-    pageMs += performance.now() - pageStarted;
+    const pageElapsed = performance.now() - pageStarted;
+    pageMs += pageElapsed;
     const decodeStarted = performance.now();
     let decoded: CompactPage | undefined;
     if (!page.error) {
@@ -130,14 +134,19 @@ export async function loadDashboard(
     decodeMs += performance.now() - decodeStarted;
     if (page.error || !decoded) {
       sqlTimingAvailable = false;
+      untimedPages++;
+      failedPageMs += pageElapsed;
       rpcFailure("page", page.error?.code);
       // After at least one valid page, retain its partial snapshot. An initial
       // page failure is a true unavailable response, not an empty health day.
       if (recordsRead === 0) throw new Error("DATA_READ_UNAVAILABLE");
       break;
     }
-    if (decoded.sqlMs === null) sqlTimingAvailable = false;
-    else {
+    successfulPageMs += pageElapsed;
+    if (decoded.sqlMs === null) {
+      sqlTimingAvailable = false;
+      untimedPages++;
+    } else {
       sqlMs += decoded.sqlMs;
       timedPages++;
     }
@@ -212,8 +221,13 @@ export async function loadDashboard(
       statusMs: Math.round(statusMs),
       inventoryMs: Math.round(inventoryMs),
       pageMs: Math.round(pageMs),
+      successfulPageMs: Math.round(successfulPageMs),
+      failedPageMs: Math.round(failedPageMs),
       decodeMs: Math.round(decodeMs),
       sqlMs: sqlTimingAvailable && timedPages > 0 ? Math.round(sqlMs) : null,
+      sqlKnownMs: Math.round(sqlMs),
+      timedPages,
+      untimedPages,
     },
   });
 }

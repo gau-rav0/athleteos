@@ -112,6 +112,11 @@ export type Dataset = {
     pageMs: number;
     decodeMs?: number;
     sqlMs?: number | null;
+    sqlKnownMs?: number;
+    successfulPageMs?: number;
+    failedPageMs?: number;
+    timedPages?: number;
+    untimedPages?: number;
   };
   excludedOverlaps: number;
 };

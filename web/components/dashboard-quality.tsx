@@ -189,6 +189,16 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
           includes database gateway, serialization and transport work.
         </p>
       )}
+      {data.timings?.sqlMs === null && (data.timings.timedPages ?? 0) > 0 && (
+        <p className="caption">
+          Observed SQL: {data.timings.sqlKnownMs} ms across{" "}
+          {data.timings.timedPages} timed pages; {data.timings.untimedPages}{" "}
+          page timings unavailable. This is a measured subset, not total SQL
+          time. Successful-page RPC: {data.timings.successfulPageMs} ms;
+          failed-page RPC: {data.timings.failedPageMs} ms. RPC includes
+          serialization and transport.
+        </p>
+      )}
     </>
   );
 }

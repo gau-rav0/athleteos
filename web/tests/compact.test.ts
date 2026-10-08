@@ -122,7 +122,7 @@ test("optional SQL timing is finite and cannot invalidate or change valid record
     expect(timed.sqlMs).toBe(value);
     expect(timed.facts).toEqual(base.facts);
   }
-  for (const value of [-1, Infinity, NaN, "1", null, {}]) {
+  for (const value of [-1, Infinity, NaN, 1e308, "1", null, {}]) {
     const timed = decodeCompactPage({ ...envelope([record]), sql_ms: value });
     expect(timed.sqlMs).toBeNull();
     expect(timed.facts).toEqual(base.facts);

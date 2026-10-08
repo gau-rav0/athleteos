@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `163d210`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `6164378`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -34,7 +34,7 @@ A lossless compact transport is also implemented and tested as additive migratio
 
 Tuple migration 0011 is applied: versioned 18-field lossless transport raises the maximum to 8,000 records within the same 2 MiB response budget, preserving canonical microsecond cursors and quarantine. Migration 0012 is applied: a four-second processing deadline commits exact resumable prefixes; the authenticated server requests up to 50 extractions. The initial query/individual extraction may exceed that budget. Both revisions preserve owner RLS and raw ingestion. Deployment `dpl_FLcXGebxU9hSsWbfj7hAk59KGcTW` is READY, functions hnd1. Actual yearly reads remain partial; no completion-time estimate is established.
 
-Migration 0013 (source `536ce67`) is applied and streams only accepted tuple prefixes plus lookahead. It preserves the wire contract and reduces redundant byte-limited encoding; synthetic equivalence tests pass. Yearly production reads remain partial despite this improvement. Optional SQL/decoder timing instrumentation passes 163 unit/database tests, TypeScript, lint and build; the clean full 32-case browser run plus 4/4 targeted timing-caption cases pass; consumer deployment follows, to locate remaining overhead before changing serving behavior.
+Migration 0013 (source `536ce67`) is applied and streams only accepted tuple prefixes plus lookahead. It preserves the wire contract and reduces redundant byte-limited encoding; synthetic equivalence tests pass. Yearly production reads remain partial despite this improvement. Optional SQL/decoder timing instrumentation passes 163 unit/database tests, TypeScript, lint and build; the clean full 32-case browser run plus 4/4 targeted timing-caption cases pass; consumer 6164378 is deployed READY with security checks 7/7, to locate remaining overhead before changing serving behavior.
 
 ## Validation and deployment
 

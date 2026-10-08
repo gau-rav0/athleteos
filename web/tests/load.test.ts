@@ -446,14 +446,15 @@ test("invalid summaries withhold analytics without inventing a projection backlo
 test("worker is independently bounded and rejects malformed success metadata", async () => {
   const fake = source({
     advance_web_projection: [
-      success({ processed: 25, scanned: 25, remaining: true, busy: false }),
+      success({ processed: 50, scanned: 50, remaining: true, busy: false }),
     ],
   });
-  expect((await advanceProjection(fake.client, 7, "UTC")).processed).toBe(25);
+  expect((await advanceProjection(fake.client, 7, "UTC")).processed).toBe(50);
+  expect(fake.rpc.mock.calls[0][1]).toMatchObject({ p_limit: 50 });
   expect(fake.rpc.mock.calls[0][0]).toBe("advance_web_projection");
   const malformed = source({
     advance_web_projection: [
-      success({ processed: 50000, scanned: 0, remaining: false, busy: false }),
+      success({ processed: 51, scanned: 0, remaining: false, busy: false }),
     ],
   });
   await expect(advanceProjection(malformed.client, 7, "UTC")).rejects.toThrow();

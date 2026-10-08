@@ -37,7 +37,7 @@ export async function advanceProjection(
         ),
       ).toISOString(),
       p_until: new Date(midnight(addDays(today, 1), timezone)).toISOString(),
-      p_limit: 25,
+      p_limit: 50,
     })
     .abortSignal(rpcSignal(12000, signal));
   if (error) throw new Error("PROJECTION_WORK_UNAVAILABLE");

@@ -1,8 +1,10 @@
 # Current resumed checkpoint â€” 8 October 2026
 
-The user explicitly resumed. Continue development; previous pause entries below are historical. Source `0b2f04a` is pushed and deployed (CPU refinement). Migration 0010 is applied. Current tuple v2 integration (0011) passes 126 unit/database tests, TypeScript, lint and production build; browser evidence is 31/32 full plus 18/18 relevant passes after fixture/scheduling fixes. It is not deployed yet. Apply reviewed 0011, deploy a clean committed snapshot, then repeat authenticated live acceptance before product/historical gates. Build workers are capped at one.
+The user explicitly resumed; continue development. Source `c917ac1` is pushed and deployed READY in Tokyo; migrations 0010–0011 are applied. Tuple v2 reduces bounded pagination round trips. Hosted synthetic rendering passes 40/40 and anonymous security checks 7/7. Actual Today short/medium ranges returned complete responses; yearly data remains partial with a projection backlog and variable latency. Gate A is still open.
 
-Actual preceding live matrix: 20 distinct responses, every expected chart rendered, zero UI alerts. Half were complete; yearly reads/projections remain partial and latency remains variable. Gate A is still open. The private ZIP is unopened. Preserve Android queues, original checkout and the feature worktree. First historical production upload and main merge still require explicit approval.
+The next reviewed milestone adds migration 0012: a four-second processing budget committing exact resumable prefixes, with the authenticated caller requesting up to 50 records. All 137 unit/database tests, TypeScript and lint pass. Build verification and production application/deployment follow; do not claim this migration is live before verifying them. First-query and individual-record work cannot be preempted safely and remain subject to existing transaction/request timeouts.
+
+The private ZIP remains unopened. Preserve Android queues, original checkout and this feature worktree. Product features follow reliability acceptance; first historical production upload and main merge still require explicit approval. Commit reviewed source milestones to the existing feature branch; main remains unchanged.
 
 ---
 

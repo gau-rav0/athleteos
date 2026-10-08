@@ -133,3 +133,12 @@ Additive migration 0011 and the v2 consumer preserve all 18 fact fields in posit
 Full unit/database suite passes 126/126; TypeScript, ESLint and production build pass. The first browser run was interrupted after 17 failures because the synthetic provider advertised v2 but still supplied objects. That fixture was corrected. The corrected full run passed 31/32; the remaining slow-inventory case exposed nondeterministic initial worker deadlines. Both workers now share one initial timestamp, preserving inventory-first priority. The subsequent relevant desktop/mobile suites passed 18/18 (inventory, projection and all-five-demo cases), including the failed case. All 32 distinct browser cases have passing evidence across these last runs, not one clean full run after the final fix. No assertion was weakened.
 
 Demo response timestamp instrumentation is omitted to prevent SSR/client timestamp hydration mismatches; the private API response timestamp remains available for actual refresh verification. Browser regressions assert no demo hydration errors. Build page-worker concurrency is explicitly one to respect the local RAM constraint; the final build confirms one worker. Test servers were stopped before builds. Migration dry-run lists only 0011. This integration is not yet deployed; actual performance improvement remains unverified.
+
+
+## Projection processing budget integration — 8 October 2026
+
+Migration 0012 commits exact resumable prefixes after a four-second processing deadline. The authenticated server caller requests up to 50 extractions, retaining its 12-second request budget. Initial query and individual extraction may exceed four seconds; no samples are skipped or truncated.
+
+All 137 unit/database tests passed, including 11 budget SQL regressions with invented fixtures. TypeScript, full ESLint and production build passed using one build worker. Dense continuation, atomic rollback, exact 50/1/0 boundaries, cached-only deadline continuation, bounds, RLS, updates, deletions and late commits are covered. Synthetic timings do not guarantee production latency.
+
+Source c917ac1 and migration 0011 are deployed READY in Tokyo. Hosted synthetic matrix passed 40/40 and anonymous security 7/7. Actual yearly data remains partial; reliability acceptance stays open. Earlier browser failure/focused rerun evidence above remains applicable; this entry does not claim a new clean full browser run.

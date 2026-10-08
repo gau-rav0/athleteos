@@ -28,7 +28,9 @@ The newest source checkpoint adds persistent authenticated layout state across t
 
 Partial status now distinguishes projection backlog, unknown projection status, incomplete reads and invalid summaries. Global partial-data withholding remains conservative; read truncation alone no longer schedules futile projection workers. The 14-second read budget also caps a late page's timeout.
 
-The server status refinement passes 16 focused tests; navigation source passed TypeScript and targeted lint. Integration TypeScript/lint passed before checkpoint. **New navigation/partial UI browser checks and the combined production build are pending**; this source is reviewable progress, not accepted production. Existing validation below describes the preceding tested deployment. No historical audit/import has started.
+The combined source passes **97/97 unit/database tests**, strict TypeScript, ESLint and production build. Full browser run passed **29/32**; two old demo notice expectations and development-badge interference with mobile navigation were corrected. A focused **6/6** desktop/mobile rerun passes, so all **32 distinct browser cases** have passed across these runs. This is not a single clean full run or hosted acceptance. New navigation/partial-status changes are not deployed yet. No historical audit/import has started.
+
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration and deployment are still pending.** It changes neither canonical raw storage nor analytics formulas.
 
 ## Validation and deployment
 

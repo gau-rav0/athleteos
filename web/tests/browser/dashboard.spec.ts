@@ -93,7 +93,9 @@ test("empty, sparse, partial and error states never fabricate signals", async ({
     page.getByText("Insufficient data", { exact: true }),
   ).toBeVisible();
   await page.goto("/demo/today?state=partial");
-  await expect(page.getByText(/Summaries are catching up/)).toBeVisible();
+  await expect(
+    page.getByText(/Only some summaries are available for this range/),
+  ).toBeVisible();
   await expect(
     page.getByText("Insufficient data", { exact: true }),
   ).toBeVisible();

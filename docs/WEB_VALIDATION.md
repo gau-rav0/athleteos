@@ -85,3 +85,14 @@ Migration 0009 and source checkpoint 84b025e are deployed to the existing Supaba
 Read-only row-count profiling supports reducing the short-range history minimum from 90 to 61 calendar days: approximately 36% fewer cached facts. Current calculations need at most 56 days for complete displayed monthly rolling skin context; 61 days retains 60 preceding days plus today. Requested 90/365-day ranges and canonical raw records remain unchanged. This refinement requires tests and deployment before any after-change performance claim.
 
 The 61-day minimum history patch passes 36 focused analytics/read-serving tests, strict TypeScript, targeted ESLint, formatting and the production Next.js build. Tests preserve the earliest displayed monthly skin deviation, requested 90/365-day calendars and matching read/worker UTC bounds across a DST transition. This is an acquisition optimization, not a new baseline formula. Hosted after-change acceptance is pending deployment.
+
+
+## Navigation and partial-status verification
+
+Persistent authenticated layout state retains range/timezone and loaded summaries across all five screen navigations without another immediate GET. Per-navigation Auth and route checks remain. Desktop/mobile regression verifies logout clears state and a second synthetic account starts with its own fresh range/data. Partial-status flags distinguish projection backlog, unavailable status, read truncation and invalid summaries; incomplete reads alone schedule no projection worker or short polling, preserve plotted charts, and allow explicit successful refresh. Global analytics withholding remains conservative.
+
+Full browser run: 29/32 passed. Two demo notice tests expected obsolete catch-up wording; one mobile navigation click was obstructed by Next's development badge. Updated truthful wording and disabled only the development indicator using the installed Next documentation; compile/runtime errors still surface. Focused desktop/mobile rerun: 6/6 passed. All 32 distinct cases have passed across these runs. Combined strict TypeScript, ESLint, 97/97 unit/database tests and production build pass. No claim of a single clean full browser run or hosted acceptance.
+
+## Standalone compact transport
+
+Migration 0010 and its version-gated decoder pass 12 focused SQL/codec tests, included in the full 97-test run. Tests cover exact byte bounds with UTF8/escapes, explicit short-page continuation, oversized-fact failure without skipping, original malformed-summary quarantine, owner/anonymous isolation and immediate revision/deletion filtering. Only actual null/default-empty fields are omitted; required provenance/timestamps are never repaired. The migration is not deployed and read serving is not wired to it yet.

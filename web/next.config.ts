@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
+  // Keep the development badge clear of fixed mobile navigation. Next still
+  // surfaces compile/runtime errors; production behavior is unchanged.
+  devIndicators: false,
   async headers() {
     return [
       {

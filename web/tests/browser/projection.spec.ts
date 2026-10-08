@@ -5,6 +5,11 @@ const origin = "http://127.0.0.1:3200";
 const chartMarks =
   ".recharts-bar-rectangle, .recharts-area-curve, .recharts-line-curve";
 
+test.afterEach(async ({ page }) => {
+  // Independent fixture fetches may finish after range cancellation.
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
+
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email", { exact: true }).fill("one@synthetic.example");
@@ -189,4 +194,68 @@ test("complete cached windows do not launch projection workers", async ({
   await expect(page.locator(chartMarks).first()).toBeVisible();
   await page.clock.runFor(10000);
   expect(workerRequests).toBe(0);
+});
+
+test("incomplete reads keep cached charts without launching futile projection work", async ({
+  page,
+}) => {
+  await page.clock.install();
+  let reads = 0;
+  let projectionRequests = 0;
+  let inventoryRequests = 0;
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path === endpoint) projectionRequests++;
+    if (path === "/api/dashboard/inventory") inventoryRequests++;
+  });
+  await page.route("**/api/dashboard?*", async (route) => {
+    reads++;
+    const response = await route.fetch();
+    const snapshot = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...snapshot,
+        partial: true,
+        projectionPending: false,
+        readIncomplete: true,
+        partialReasons: ["READ_INCOMPLETE"],
+        inventoryAvailable: true,
+        inventorySnapshot: {
+          as_of: "2025-01-01T00:00:00Z",
+          stale: false,
+          available: true,
+          refresh_required: false,
+        },
+      },
+    });
+  });
+  await signIn(page);
+  const notice = page.getByText(/Only part of this range loaded/);
+  await expect(notice).toBeVisible();
+  await expect(notice).toContainText(/try a shorter range or refresh/);
+  await expect(notice).toContainText(/Scores and associations are withheld/);
+  await expect(page.getByText(/Summaries are catching up/)).toHaveCount(0);
+  await expect(page.locator(chartMarks).first()).toBeVisible();
+  const initialReads = reads;
+  await page.clock.runFor(40000);
+  expect(projectionRequests).toBe(0);
+  expect(inventoryRequests).toBe(0);
+  expect(reads).toBe(initialReads);
+  await expect(page.locator(chartMarks).first()).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
+
+  const refreshed = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/dashboard" &&
+      response.request().method() === "GET",
+  );
+  await page.getByRole("button", { name: "Refresh dashboard" }).click();
+  expect((await refreshed).status()).toBe(200);
+  await expect.poll(() => reads).toBe(initialReads + 1);
+  await expect(notice).toBeVisible();
+  await expect(page.locator(chartMarks).first()).toBeVisible();
+  await page.clock.runFor(2100);
+  expect(projectionRequests).toBe(0);
+  expect(inventoryRequests).toBe(0);
 });

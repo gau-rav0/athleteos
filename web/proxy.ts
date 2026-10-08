@@ -1,5 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import { getUserSafely, isInvalidSession } from "@/lib/supabase/session-error";
 import { NextResponse, type NextRequest } from "next/server";
 import { boundedServerFetch } from "@/lib/supabase/transport";
 import { privateHeaders } from "@/lib/security";
@@ -41,8 +41,8 @@ export async function proxy(request: NextRequest) {
   });
   // Validate against Auth, rather than trusting cookie session content.
   try {
-    const { error } = await client.auth.getUser();
-    if (isAuthRetryableFetchError(error)) throw new Error("AUTH_UNAVAILABLE");
+    const { error } = await getUserSafely(client);
+    if (error && !isInvalidSession(error)) throw new Error("AUTH_UNAVAILABLE");
   } catch {
     // An Auth outage is never treated as a validated session. Return a bounded,
     // redacted failure instead of rendering data or dumping exception details.

@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { AuthRetryableFetchError, createClient } from "@supabase/supabase-js";
+import {
+  AuthApiError,
+  AuthRetryableFetchError,
+  AuthUnknownError,
+  createClient,
+} from "@supabase/supabase-js";
 import type { CookieOptions } from "@supabase/ssr";
 
 const mocks = vi.hoisted(() => ({ create: vi.fn(), auth: vi.fn() }));
@@ -197,5 +202,40 @@ test("proxy fails closed with generic private errors on Auth transport failure",
     });
     expect(response.headers.get("Cache-Control")).toContain("no-store");
     expect(response.headers.get("Vary")).toBe("Cookie");
+  }
+});
+
+test("proxy treats throttling and unknown service failures as outages and preserves refresh cookies", async () => {
+  for (const error of [
+    new AuthApiError(
+      "synthetic private details",
+      429,
+      "over_request_rate_limit",
+    ),
+    new AuthApiError("synthetic private details", 500, "unexpected_failure"),
+    new AuthUnknownError(
+      "synthetic private details",
+      new Error("private cause"),
+    ),
+  ]) {
+    mocks.auth.mockImplementation(async () => {
+      options.cookies.setAll([
+        {
+          name: "synthetic-refresh",
+          value: "rotated",
+          options: { httpOnly: true },
+        },
+      ]);
+      return { error };
+    });
+    const response = await proxy(
+      new NextRequest("https://synthetic.example/today"),
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: "AUTH_SERVICE_UNAVAILABLE",
+    });
+    expect(response.cookies.get("synthetic-refresh")?.value).toBe("rotated");
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
   }
 });

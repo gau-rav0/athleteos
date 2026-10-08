@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `1795dde`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `163d210`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -28,15 +28,17 @@ The newest source checkpoint adds persistent authenticated layout state across t
 
 Partial status now distinguishes projection backlog, unknown projection status, incomplete reads and invalid summaries. Global partial-data withholding remains conservative; read truncation alone no longer schedules futile projection workers. The 14-second read budget also caps a late page's timeout.
 
-The resumed compact-serving source passes **108/108 full unit/database tests**, strict TypeScript, ESLint and a clean **32/32 full desktop/mobile browser run**. Production build also passes. These fixture checks do not establish hosted acceptance. No historical audit/import has started.
+Current source passes **137/137 full unit/database tests**, strict TypeScript and ESLint. The earlier compact-serving checkpoint passed a clean 32/32 desktop/mobile browser run; newer tuple integration passed 31/32 full and 18/18 relevant after its scheduling fix. Current source subsequently passed a clean full 32/32 desktop/mobile run. Production build also passes. These fixture checks do not establish hosted acceptance. No historical audit/import has started.
 
-A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration, full local regression and deployment are verified; actual hosted acceptance remains pending.** Canonical cursors preserve microsecond precision. Migration 0010 is now applied; new consumer source `1795dde` is deployed. It changes neither canonical raw storage nor analytics formulas.
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration, full local regression and deployment are verified; actual hosted acceptance remains pending.** Canonical cursors preserve microsecond precision. Migration 0010 is now applied; tuple consumer source `c917ac1` and budget integration `163d210` are deployed. It changes neither canonical raw storage nor analytics formulas.
+
+Tuple migration 0011 is applied: versioned 18-field lossless transport raises the maximum to 8,000 records within the same 2 MiB response budget, preserving canonical microsecond cursors and quarantine. Migration 0012 is applied: a four-second processing deadline commits exact resumable prefixes; the authenticated server requests up to 50 extractions. The initial query/individual extraction may exceed that budget. Both revisions preserve owner RLS and raw ingestion. Deployment `dpl_FLcXGebxU9hSsWbfj7hAk59KGcTW` is READY, functions hnd1. Actual yearly reads remain partial; no completion-time estimate is established.
 
 ## Validation and deployment
 
-- Latest full unit/database suite: **108/108 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
+- Latest full unit/database suite: **137/137 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
 - Strict TypeScript, ESLint and production Next.js build: **passed**.
-- Latest full desktop/mobile browser run: **32/32 passed**. Earlier fixture wording/teardown and development-indicator failures were corrected; historical runs remain documented in WEB_VALIDATION.md.
+- Earlier clean desktop/mobile browser run: **32/32 passed**; newer tuple integration passed 31/32 full and 18/18 relevant after its scheduling fix. Current source subsequently passed a clean full 32/32 desktop/mobile run. Earlier fixture wording/teardown and development-indicator failures were corrected; historical runs remain documented in WEB_VALIDATION.md.
 - Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
 - Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
 - Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.

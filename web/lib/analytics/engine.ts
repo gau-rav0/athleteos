@@ -71,6 +71,11 @@ export type Readiness = {
   contributors: Contributor[];
   baselineDays: number;
 };
+export type PartialReason =
+  | "PROJECTION_PENDING"
+  | "PROJECTION_STATUS_UNAVAILABLE"
+  | "READ_INCOMPLETE"
+  | "INVALID_SUMMARIES";
 export type Dataset = {
   version: string;
   timezone: string;
@@ -81,6 +86,9 @@ export type Dataset = {
   inventoryAvailable?: boolean;
   inventorySnapshot?: InventorySnapshot;
   partial: boolean;
+  projectionPending?: boolean;
+  readIncomplete?: boolean;
+  partialReasons?: PartialReason[];
   invalidFacts: number;
   readiness: Readiness;
   sleepBaseline: ReturnType<typeof robustBaseline>;

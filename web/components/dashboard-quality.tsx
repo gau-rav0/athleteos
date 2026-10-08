@@ -1,5 +1,6 @@
 "use client";
 import type { Dataset, Metric } from "@/lib/analytics/engine";
+import { summaryStatus } from "@/lib/data/coverage-ui";
 import { localDay } from "@/lib/analytics/time";
 import { Status, fmt, dateLabel } from "./dashboard-primitives";
 export function InventoryTable({ data }: { data: Dataset }) {
@@ -120,7 +121,7 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
         <div>
           <span>Summary state</span>
           <strong>
-            {data.partial ? "Partial · updating" : "Selected window processed"}
+            {data.partial ? summaryStatus(data) : "Selected window processed"}
           </strong>
         </div>
       </div>

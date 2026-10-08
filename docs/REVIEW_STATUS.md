@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest implementation checkpoint: `84b025e`; subsequent documentation commits may follow it. Use `git rev-parse HEAD` for the checked-out revision.
+This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -21,6 +21,14 @@ The user has authorized continued web-platform work, specialist agents, reviewed
 - Short ranges acquire 61 calendar days instead of 90, retaining the full calculation context; selected 90/365-day ranges are unchanged. The refinement passes 36 focused tests, TypeScript, targeted lint and production build; live after-change acceptance is pending.
 - Single Tokyo function region colocated with the existing Tokyo database; no paid upgrade or new hosting project.
 - Repository/deployment guards exclude exports, credentials, tokens, device identifiers, SDK binaries, private captures and generated artifacts. Only invented fixtures enter source control.
+
+## Current source checkpoint for external review
+
+The newest source checkpoint adds persistent authenticated layout state across the five screens, retaining range/timezone/loaded charts without shared or persistent health-data caches. Per-navigation authentication remains in the page. Logout and 401 clear state. New navigation/account-switch browser regressions are included.
+
+Partial status now distinguishes projection backlog, unknown projection status, incomplete reads and invalid summaries. Global partial-data withholding remains conservative; read truncation alone no longer schedules futile projection workers. The 14-second read budget also caps a late page's timeout.
+
+The server status refinement passes 16 focused tests; navigation source passed TypeScript and targeted lint. Integration TypeScript/lint passed before checkpoint. **New navigation/partial UI browser checks and the combined production build are pending**; this source is reviewable progress, not accepted production. Existing validation below describes the preceding tested deployment. No historical audit/import has started.
 
 ## Validation and deployment
 

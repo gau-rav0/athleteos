@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { demoDataset } from "@/lib/data/demo";
 import type { Dataset } from "@/lib/analytics/engine";
+import { summaryNotices, summaryStatus } from "@/lib/data/coverage-ui";
 import {
   Modal,
   Status,
@@ -227,7 +228,7 @@ export function Dashboard({
         if (active) {
           setSnapshot({ key, data: result });
           setError(null);
-          partial = result.partial;
+          partial = result.projectionPending ?? result.partial;
           inventoryPending =
             result.inventorySnapshot?.refresh_required ?? false;
           scheduleWork();
@@ -303,6 +304,7 @@ export function Dashboard({
               href={`${demo ? "/demo" : ""}/${item.slug}${demo && mode !== "normal" ? `?state=${mode}` : ""}`}
               aria-current={screen === item.slug ? "page" : undefined}
               className={screen === item.slug ? "active" : ""}
+              onNavigate={() => setPanel(null)}
             >
               <item.icon size={19} aria-hidden />
               <span>{item.label}</span>
@@ -384,7 +386,7 @@ export function Dashboard({
               onClick={() => setPanel("sources")}
             >
               <SlidersHorizontal size={16} aria-hidden />
-              {data?.partial ? "Summaries updating" : "Data quality"}
+              {summaryStatus(data ?? undefined)}
             </button>
           </div>
           <div className="control-row">
@@ -434,8 +436,7 @@ export function Dashboard({
           {data?.partial && (
             <div className="notice">
               <RefreshCw size={16} aria-hidden />
-              Summaries are catching up with uploaded records. Scores and
-              associations are withheld until this window is processed.
+              {summaryNotices(data).join(" ")}
             </div>
           )}
           {error?.key === key && (

@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/supabase/auth";
-import { Dashboard } from "@/components/dashboard";
 export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   params,
@@ -11,5 +10,6 @@ export default async function DashboardPage({
   if (!["today", "train", "recover", "progress", "insights"].includes(screen))
     notFound();
   await requireUser();
-  return <Dashboard screen={screen} demo={false} />;
+  // Validate each navigation even though the authenticated client shell persists.
+  return null;
 }

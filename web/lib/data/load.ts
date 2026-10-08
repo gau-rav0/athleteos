@@ -4,7 +4,7 @@ import type {
   PostgrestSingleResponse,
 } from "@supabase/supabase-js";
 import { factSchema, inventorySnapshotSchema, type Fact } from "./schema";
-import { buildDataset } from "@/lib/analytics/engine";
+import { buildDataset, type PartialReason } from "@/lib/analytics/engine";
 import { MIN_ANALYTICS_HISTORY_DAYS } from "@/lib/analytics/history";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
 import { projectionStatusSchema, rpcSignal } from "./projection";
@@ -135,6 +135,12 @@ export async function loadDashboard(
     status.error !== null ||
     !parsedStatus.success ||
     parsedStatus.data.remaining;
+  const partialReasons: PartialReason[] = [];
+  if (status.error !== null || !parsedStatus.success)
+    partialReasons.push("PROJECTION_STATUS_UNAVAILABLE");
+  else if (remaining) partialReasons.push("PROJECTION_PENDING");
+  if (!finished) partialReasons.push("READ_INCOMPLETE");
+  if (invalid > 0) partialReasons.push("INVALID_SUMMARIES");
   if (status.error) rpcFailure("status", status.error.code);
   // Missing metadata means unavailable inventory, never zero uploaded records.
   const parsedInventory = inventorySnapshotSchema.safeParse(
@@ -171,6 +177,11 @@ export async function loadDashboard(
   result.queryMs = Math.round(performance.now() - started);
   // Performance-only counters: no values, identities, row payloads or tokens.
   return Object.assign(result, {
+    // Work scheduling and displayed completeness have different meanings.
+    // Keep partial as the conservative analytics gate, including read failure.
+    projectionPending: remaining,
+    readIncomplete: !finished,
+    partialReasons,
     timings: {
       rpcMs: Math.round(Math.max(statusMs, inventoryMs, pageMs)),
       analyticsMs: Math.round(performance.now() - analyticsStarted),

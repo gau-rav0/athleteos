@@ -30,6 +30,8 @@ async function staleInventory(page: Page, partial: boolean) {
       json: {
         ...snapshot,
         partial,
+        projectionPending: partial,
+        partialReasons: partial ? ["PROJECTION_PENDING"] : [],
         inventoryAvailable: true,
         inventorySnapshot: {
           as_of: "2025-01-01T00:00:00Z",

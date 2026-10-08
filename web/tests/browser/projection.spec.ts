@@ -21,7 +21,15 @@ async function servePartialSnapshot(page: Page) {
     // Use the existing invented account fixture, never a real Supabase session.
     const response = await route.fetch();
     const snapshot = await response.json();
-    await route.fulfill({ response, json: { ...snapshot, partial: true } });
+    await route.fulfill({
+      response,
+      json: {
+        ...snapshot,
+        partial: true,
+        projectionPending: true,
+        partialReasons: ["PROJECTION_PENDING"],
+      },
+    });
   });
 }
 

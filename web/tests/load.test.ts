@@ -108,6 +108,9 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   ]);
   expect(result.partial).toBe(false);
   expect(result.queryCount).toBe(3);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(false);
+  expect(result.partialReasons).toEqual([]);
   expect(Object.keys(result.timings).sort()).toEqual([
     "analyticsMs",
     "inventoryMs",
@@ -131,6 +134,9 @@ test("status timeouts keep validated cached data partial and redact errors", asy
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(true);
+  expect(result.readIncomplete).toBe(false);
+  expect(result.partialReasons).toEqual(["PROJECTION_STATUS_UNAVAILABLE"]);
   expect(result.readiness.score).toBeNull();
   expect(result.days.at(-1)?.steps).toBe(100);
   expect(JSON.stringify(warn.mock.calls)).not.toContain("private payload");
@@ -147,6 +153,7 @@ test("inventory failure retains valid charts without misclassifying fact coverag
   expect(result.partial).toBe(false);
   expect(result.days.at(-1)?.steps).toBe(100);
   expect(result.inventoryAvailable).toBe(false);
+  expect(result.partialReasons).toEqual([]);
 });
 
 test("initial fact read failure is unavailable rather than an empty healthy day", async () => {
@@ -169,6 +176,9 @@ test("later fact read failure retains earlier pages as explicitly partial", asyn
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(true);
+  expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
   expect(fake.rpc).toHaveBeenCalledTimes(4);
 });
 
@@ -205,6 +215,9 @@ test("late fact pages use only the remaining 14s read budget and retain cached c
   ]);
   expect(pages).toBe(2);
   expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(true);
+  expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
   expect(result.days.at(-1)?.steps).toBe(100);
   expect(result.readiness.score).toBeNull();
 });
@@ -233,6 +246,40 @@ test("exhausted serving budget starts no additional fact page", async () => {
     fake.rpc.mock.calls.filter(([name]) => name === "web_facts_cursor"),
   ).toHaveLength(1);
   expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(true);
+  expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
+  expect(result.days.at(-1)?.steps).toBe(100);
+});
+
+test("known projection backlog is distinct from incomplete read serving", async () => {
+  const fake = source({
+    ...defaults(),
+    web_projection_status: [success({ remaining: true })],
+    web_facts_cursor: [success([fact()])],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(true);
+  expect(result.readIncomplete).toBe(false);
+  expect(result.partialReasons).toEqual(["PROJECTION_PENDING"]);
+  expect(result.readiness.score).toBeNull();
+});
+
+test("invalid summaries withhold analytics without inventing a projection backlog", async () => {
+  const fake = source({
+    ...defaults(),
+    web_facts_cursor: [
+      success([fact(), { ...fact(), value: "synthetic-invalid" }]),
+    ],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(false);
+  expect(result.partialReasons).toEqual(["INVALID_SUMMARIES"]);
+  expect(result.invalidFacts).toBe(1);
+  expect(result.readiness.score).toBeNull();
   expect(result.days.at(-1)?.steps).toBe(100);
 });
 

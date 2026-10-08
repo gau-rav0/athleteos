@@ -8,6 +8,10 @@ A fresh yearly response measured 10,907 ms fact-page RPC, 7,737 ms inside SQL, 4
 
 The private ZIP remains unopened. Android and S21 FE queues are untouched. Product features follow reliability acceptance; private preparation and explicit first historical-upload approval follow. Main merge still needs approval. Push reviewed meaningful source/test/documentation milestones to the existing feature branch.
 
+Indexed-cursor source `938a34a` is pushed; migration 0015 dry-run/application succeeded. Production metadata confirms invoker semantics, authenticated execution, denied anonymous execution and the new fixed-text/parameter-bound query. The entire source suite now passes 173/173, TypeScript/full lint/formatting pass. The Next.js application source is unchanged from deployed 232e819; a frontend redeploy is not required for this compatible RPC replacement.
+
+Post-migration acceptance encountered failed yearly/monthly refreshes. Safe log inspection found PGRST002 connection/schema-cache failures; one CLI diagnostic login also timed out, then later metadata queries recovered. These are not proof of a query-plan regression or stability. No database restart, policy weakening, phone action or archive access was performed. The documented PostgREST schema reload notification succeeded; the next read still failed. Project metadata reports ACTIVE_HEALTHY, which does not establish Data API health. Continue service-log diagnosis and fresh serving checks after API recovery; Gate A remains open.
+
 ---
 
 # RESUMED explicitly by the user — 8 October 2026

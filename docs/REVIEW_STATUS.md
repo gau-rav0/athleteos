@@ -40,14 +40,16 @@ Latest diagnostic refinement `232e819` preserves total SQL as unknown after fail
 
 ## Validation and deployment
 
-- Latest full unit/database suite: **163/163 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
+- Latest full unit/database suite: **173/173 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
 - Strict TypeScript, ESLint and production Next.js build: **passed**.
 - Earlier clean desktop/mobile browser run: **32/32 passed**; newer tuple integration passed 31/32 full and 18/18 relevant after its scheduling fix. Current source subsequently passed a clean full 32/32 desktop/mobile run. Earlier fixture wording/teardown and development-indicator failures were corrected; historical runs remain documented in WEB_VALIDATION.md.
 - Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
 - Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
 - Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.
-- Migrations **0005–0014 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
+- Migrations **0005–0015 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
 - Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `232e819` is deployed READY in hnd1 as `dpl_3pN8tNJSGfcgbwCNSLEHUgPYtDLr`.
+
+Indexed continuation source 938a34a and migration 0015 are pushed/applied. Generic-plan synthetic tests demonstrate removal of unnecessary earlier-row scans without changing any wire envelopes. Full source suite passes 173/173, TypeScript/full lint/formatting pass. Compatible SQL changes need no frontend redeploy. Post-application live acceptance encountered PGRST002 connection/schema-cache errors and a transient CLI diagnostic-login timeout; direct metadata diagnostics subsequently recovered. The underlying provider cause and stable serving remain unverified. See WEB_INDEXED_CURSOR.md and WEB_VALIDATION.md.
 
 ## Production reliability remains under review
 

@@ -1,8 +1,23 @@
 import { z } from "zod";
 import { factSchema, type Fact } from "./schema";
+// PostgreSQL keysets retain microseconds; Date.parse alone truncates them and
+// can incorrectly compare distinct records as equal millisecond timestamps.
+export function cursorEpochMicroseconds(value: string): bigint | null {
+  const match =
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?(Z|[+-]\d{2}:\d{2})$/.exec(
+      value,
+    );
+  if (!match) return null;
+  const milliseconds = Date.parse(match[1] + match[3]);
+  if (!Number.isFinite(milliseconds)) return null;
+  return (
+    BigInt(milliseconds) * BigInt(1000) +
+    BigInt((match[2] ?? "").padEnd(6, "0"))
+  );
+}
 const cursorInstant = z
   .string()
-  .refine((value) => Number.isFinite(Date.parse(value)), "INVALID_CURSOR");
+  .refine((value) => cursorEpochMicroseconds(value) !== null, "INVALID_CURSOR");
 const envelopeSchema = z
   .object({
     wire_version: z.literal(1),

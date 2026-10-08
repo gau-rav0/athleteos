@@ -96,3 +96,8 @@ Full browser run: 29/32 passed. Two demo notice tests expected obsolete catch-up
 ## Standalone compact transport
 
 Migration 0010 and its version-gated decoder pass 12 focused SQL/codec tests, included in the full 97-test run. Tests cover exact byte bounds with UTF8/escapes, explicit short-page continuation, oversized-fact failure without skipping, original malformed-summary quarantine, owner/anonymous isolation and immediate revision/deletion filtering. Only actual null/default-empty fields are omitted; required provenance/timestamps are never repaired. The migration is not deployed and read serving is not wired to it yet.
+
+
+## User pause checkpoint
+
+The compact consumer and synthetic provider are now integrated. Latest 32 focused tests, TypeScript, scoped lint and provider syntax checks pass. Explicit has_more controls continuation, canonical cursors must descend with PostgreSQL microsecond precision, invalid records count toward the 100k budget, and malformed later envelopes preserve valid partial charts. Full combined build/browser/unit regression after this consumer change is pending. Migration 0010 and later web source remain undeployed. User requested a stop; save/push this source, preserve both worktrees and wait for explicit RESUME. No historical archive or phone operations occurred.

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { decodeCompactPage } from "@/lib/data/compact";
+import { cursorEpochMicroseconds, decodeCompactPage } from "@/lib/data/compact";
 const identity = "00000000-0000-4000-8000-000000000010";
 const record = {
   id: identity,
@@ -97,4 +97,19 @@ test("unknown versions, missing continuation and oversized row counts fail close
   expect(() =>
     decodeCompactPage({ ...envelope([]), records: Array(4001).fill(record) }),
   ).toThrow();
+});
+
+test("cursor precision is exact to six fractional digits with equivalent offsets", () => {
+  const before = cursorEpochMicroseconds("2025-01-01T00:00:00.000002Z")!;
+  expect(before - cursorEpochMicroseconds("2025-01-01T00:00:00.000001Z")!).toBe(
+    BigInt(1),
+  );
+  expect(cursorEpochMicroseconds("2025-01-01T01:00:00.000002+01:00")).toBe(
+    before,
+  );
+  expect(cursorEpochMicroseconds("2025-01-01T00:00:00.1Z")).toBe(
+    cursorEpochMicroseconds("2025-01-01T00:00:00.100000Z"),
+  );
+  expect(cursorEpochMicroseconds("2025-01-01T00:00:00.0000001Z")).toBeNull();
+  expect(cursorEpochMicroseconds("2025-01-01")).toBeNull();
 });

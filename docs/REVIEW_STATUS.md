@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+Development is paused at the user's request. Wait for explicit RESUME. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -30,7 +30,7 @@ Partial status now distinguishes projection backlog, unknown projection status, 
 
 The combined source passes **97/97 unit/database tests**, strict TypeScript, ESLint and production build. Full browser run passed **29/32**; two old demo notice expectations and development-badge interference with mobile navigation were corrected. A focused **6/6** desktop/mobile rerun passes, so all **32 distinct browser cases** have passed across these runs. This is not a single clean full run or hosted acceptance. New navigation/partial-status changes are not deployed yet. No historical audit/import has started.
 
-A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration and deployment are still pending.** It changes neither canonical raw storage nor analytics formulas.
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration is now saved; full integration regression and deployment remain pending.** Its latest 32 focused tests, TypeScript, scoped lint and mock-provider syntax checks pass, including exact microsecond cursor ordering. Migration 0010 is not applied; deploy it before the new consumer. It changes neither canonical raw storage nor analytics formulas.
 
 ## Validation and deployment
 

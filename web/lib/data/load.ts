@@ -3,7 +3,12 @@ import type {
   SupabaseClient,
   PostgrestSingleResponse,
 } from "@supabase/supabase-js";
-import { factSchema, inventorySnapshotSchema, type Fact } from "./schema";
+import { inventorySnapshotSchema, type Fact } from "./schema";
+import {
+  cursorEpochMicroseconds,
+  decodeCompactPage,
+  type CompactPage,
+} from "./compact";
 import { buildDataset, type PartialReason } from "@/lib/analytics/engine";
 import { MIN_ANALYTICS_HISTORY_DAYS } from "@/lib/analytics/history";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
@@ -65,10 +70,11 @@ export async function loadDashboard(
     beforeStart: string | null = null,
     beforeId: string | null = null;
   const readDeadline = performance.now() + 14000;
-  for (
-    let count = 0;
-    count < 100000 && !finished && performance.now() < readDeadline;
-    count += 2000
+  let recordsRead = 0;
+  while (
+    recordsRead < 100000 &&
+    !finished &&
+    performance.now() < readDeadline
   ) {
     signal?.throwIfAborted();
     const pageStarted = performance.now();
@@ -82,47 +88,53 @@ export async function loadDashboard(
     );
     queries++;
     const page: PostgrestSingleResponse<unknown> = await client
-      .rpc("web_facts_cursor", {
+      .rpc("web_compact_facts_cursor", {
         p_from: from,
         p_until: until,
         p_before_start: beforeStart,
         p_before_id: beforeId,
-        p_limit: 2000,
+        p_limit: Math.min(4000, 100000 - recordsRead),
       })
       .abortSignal(rpcSignal(pageTimeoutMs, signal));
     pageMs += performance.now() - pageStarted;
-    if (page.error || !Array.isArray(page.data)) {
+    let decoded: CompactPage | undefined;
+    if (!page.error) {
+      try {
+        decoded = decodeCompactPage(page.data);
+        // Compare canonical SQL keysets, independent of malformed fact fields.
+        // A duplicate or increasing cursor cannot safely prove continuation.
+        if (
+          decoded.hasMore &&
+          beforeStart !== null &&
+          beforeId !== null &&
+          !(
+            cursorEpochMicroseconds(decoded.nextStart!)! <
+              cursorEpochMicroseconds(beforeStart)! ||
+            (cursorEpochMicroseconds(decoded.nextStart!) ===
+              cursorEpochMicroseconds(beforeStart) &&
+              decoded.nextId!.toLowerCase() < beforeId.toLowerCase())
+          )
+        )
+          decoded = undefined;
+        if (decoded && decoded.records > Math.min(4000, 100000 - recordsRead))
+          decoded = undefined;
+      } catch {
+        // Malformed envelopes fail closed, with no payload in diagnostics.
+      }
+    }
+    if (page.error || !decoded) {
       rpcFailure("page", page.error?.code);
       // After at least one valid page, retain its partial snapshot. An initial
       // page failure is a true unavailable response, not an empty health day.
-      if (count === 0) throw new Error("DATA_READ_UNAVAILABLE");
+      if (recordsRead === 0) throw new Error("DATA_READ_UNAVAILABLE");
       break;
     }
-    if (page.data.length < 2000) finished = true;
-    for (const row of page.data) {
-      const parsed = factSchema.safeParse(row);
-      if (parsed.success) facts.push(parsed.data);
-      else invalid++;
-    }
-    if (!finished) {
-      const last: { start?: unknown; id?: unknown } | null | undefined =
-        page.data.at(-1);
-      if (
-        !last ||
-        typeof last.start !== "string" ||
-        typeof last.id !== "string" ||
-        !Number.isFinite(Date.parse(last.start)) ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          last.id,
-        ) ||
-        (last.start === beforeStart && last.id === beforeId)
-      ) {
-        invalid++;
-        break;
-      }
-      beforeStart = last.start;
-      beforeId = last.id;
-    }
+    recordsRead += decoded.records;
+    finished = !decoded.hasMore;
+    facts.push(...decoded.facts);
+    invalid += decoded.invalid;
+    beforeStart = decoded.nextStart;
+    beforeId = decoded.nextId;
   }
   const metadata = await metadataPromise;
   const unavailable = { data: null, error: { code: "UNAVAILABLE" } };

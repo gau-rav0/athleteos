@@ -1,3 +1,27 @@
+# PAUSED by the user — 8 October 2026
+
+Development is stopped. Do not execute queued follow-ups, start servers, deploy, import historical data or modify phone queues until the user explicitly says RESUME. Preserve this feature worktree and the original ingestion checkout. This pause supersedes the resumed/historical notes below.
+
+Branch: `feat/athleteos-web-dashboard-v1`; draft PR #2. Latest preceding pushed checkpoint: `bd17ebfa21685150d90d0c17605627740bd5316a`. The pause commit also saves compact read-serving integration; use `git rev-parse HEAD` and `git ls-remote origin refs/heads/feat/athleteos-web-dashboard-v1` for its exact SHA. Main remains unchanged; all dashboard work is on the feature branch.
+
+Completed: five-screen responsive redesign, sparse chart fixes, durable projection workers, owner-scoped coverage snapshots, Tokyo placement, Auth/cookie/deadline handling, 61-day short-range history, persistent authenticated navigation state, truthful partial-status reasons, and lossless bounded compact transport. Source read serving now uses explicit compact continuation with PostgreSQL microsecond-safe cursor comparison. No new analytics formulas or raw-store changes were introduced by transport integration.
+
+Verification: preceding combined checkpoint passed 97/97 full unit/database tests, TypeScript, ESLint and production build. Browser full run passed 29/32; stale demo expectations and development-badge interference were corrected, followed by 6/6 focused passes. All 32 distinct browser cases passed across runs, not a single clean full run. Latest compact-serving integration passes 32 focused tests, TypeScript, scoped lint and syntax checks. Its full build/browser/full-unit regression have NOT yet been rerun.
+
+Deployment: source history checkpoint 628ebcf is the latest known hosted deployment. Later navigation/partial/compact-serving checkpoints are NOT deployed. Migrations 0005–0009 are applied; **0010 is tested locally but NOT deployed**. Do not deploy the new consumer before applying the reviewed migration. Live checks still show variable latency, partial long ranges and a transient first-page read failure; milestone A remains unaccepted. Five development-only dependency advisories remain.
+
+Exact next steps after RESUME:
+1. Read this checkpoint and REVIEW_STATUS.md; inspect status/diff/log/remote without resetting anything.
+2. Run full unit/database tests with maxWorkers=2, strict TypeScript, lint, desktop/mobile browser tests and production build sequentially under the two-heavy-process limit.
+3. Fix any regressions, review SQL 0010's bounds/RLS/continuation and staged privacy guard; push validated milestones.
+4. Apply 0010 to the existing Supabase project only after checks, then deploy a clean committed source snapshot to the existing Vercel project. Freeze agent file edits during upload.
+5. Repeat actual authenticated five-screen × four-range and refresh acceptance, recording chart geometry, latency and partial reasons. Do not infer production success from fixtures.
+6. Only after reliability acceptance, implement the agreed product-feature milestone; then privately audit/dry-run/overlap-check the historical archive. Explicit approval is mandatory before first historical production upload. Integrated acceptance and main merge approval follow.
+
+The private ZIP remains unopened and unextracted. No historical audit, dry-run, upload or backfill completion is claimed. Android, the S21 FE and existing upload queues remain untouched. No private health values, export files, credentials or device identifiers are committed. All specialist agents have finished their current work. No follow-up should run automatically.
+
+---
+
 # Resumed platform work — 2026-10-08
 
 The latest user master task explicitly resumes dashboard work and authorizes agents, validated milestone pushes, production fixes and private historical audit preparation. The old pause records below are historical. Current scope/ownership and import approval gates are in PLATFORM_EXECUTION.md; current verification is in WEB_VALIDATION.md. Keep the existing feature branch and draft PR #2. Do not change Android or phone upload queues. First historical production upload still needs explicit approval after the private audit and overlap review.

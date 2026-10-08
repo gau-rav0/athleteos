@@ -117,3 +117,10 @@ Committed source `1795dde` deployed READY to the existing Vercel project as `dpl
 Hosted anonymous dashboard/projection/inventory requests reject access; hostile/missing mutation Origins reject access. Generic errors, no-store and Vary Cookie remain. New deployed synthetic chart/layout matrix passes 40/40 across five screens, four ranges, desktop/mobile and reduced motion. No invalid chart marks, client errors or horizontal overflow. These are rendering/security checks, not actual database-latency acceptance.
 
 Actual authenticated checks are ongoing. Today 7/28/90/365-day checked responses rendered both chart marks without UI errors; measured work was 5,843 / 7,922 / 12,280 / 15,559 ms respectively. Long ranges can still reach the read budget and return explicit partial results. Train 28-day later completed in 4,542 ms. The latest 15-minute static log scan counted five RPC UNAVAILABLE warnings, with no observed DATA_READ_UNAVAILABLE entry in that scan. Milestone A remains open; first-page failure absence in one scan is not a reliability guarantee. No private values or identifiers were recorded.
+
+
+## Overnight heart-rate CPU refinement
+
+Precompute Health Connect hourly bucket timestamps once, preserving original traversal/channel ranks/source ties and every existing containment/inclusion rule. Five independent prior-algorithm regressions cover ties, duplicates, boundary cases, malformed dates, multiple sleep intervals, missing samples and partial withholding. Full suite passes 113/113; TypeScript, ESLint and production build pass. Invented 90-day/34,290-fact benchmark measured 1,735→659 ms and 1,664→554 ms, with the entire Dataset deep-equal before/after. Production improvement is not yet measured.
+
+The first deployed-source live matrix checked 20 distinct responses (five screens × four ranges): every expected plot had finite visible marks and zero UI alerts. Ten responses were complete; the others showed summary catch-up and/or read truncation. Yearly projection still has a substantial backlog of existing server records; this is not a historical ZIP upload. Gate A remains open.

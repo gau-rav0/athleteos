@@ -401,6 +401,30 @@ export function buildDataset(
         `${m}: crossing-midnight counts are allocated by interval duration`,
       );
   }
+  // Keep the existing overnight inclusion and traversal order exactly. These
+  // buckets are intentionally separate from the daily metric identity filter:
+  // overnight selection historically visits every HC heart-rate fact.
+  const sleepHeartBuckets: {
+    fact: Fact;
+    start: number;
+    end: number;
+    mean: number;
+    count: number;
+  }[] = [];
+  for (const fact of facts) {
+    if (fact.provider !== "health_connect" || fact.kind !== "heart_rate")
+      continue;
+    for (const bucket of fact.hourly) {
+      if (!bucket.count) continue;
+      sleepHeartBuckets.push({
+        fact,
+        start: Date.parse(bucket.start),
+        end: Date.parse(bucket.end),
+        mean: bucket.mean,
+        count: bucket.count,
+      });
+    }
+  }
   const canonicalSessions: Session[] = [];
   for (const day of calendar.keys())
     for (const kind of ["sleep", "exercise"]) {
@@ -468,33 +492,31 @@ export function buildDataset(
           row.cardioMinutes = cardio.reduce((sum, s) => sum + s.minutes, 0);
       }
       if (kind === "sleep") {
+        const sleepBounds = kept.map((session) => ({
+          start: Date.parse(session.start),
+          end: Date.parse(session.end),
+        }));
         const hourly = new Map<
           string,
           { rank: number; sum: number; count: number; source: string }
         >();
-        for (const f of facts) {
-          if (f.provider !== "health_connect" || f.kind !== "heart_rate")
-            continue;
-          for (const bucket of f.hourly) {
-            if (
-              !bucket.count ||
-              !kept.some(
-                (s) =>
-                  Date.parse(bucket.start) >= Date.parse(s.start) &&
-                  Date.parse(bucket.end) <= Date.parse(s.end),
-              )
+        for (const bucket of sleepHeartBuckets) {
+          if (
+            !sleepBounds.some(
+              (s) => bucket.start >= s.start && bucket.end <= s.end,
             )
-              continue;
-            const group = hourly.get(f.channel) || {
-              rank: f.rank,
-              sum: 0,
-              count: 0,
-              source: sourceLabel(f),
-            };
-            group.sum += bucket.mean * bucket.count;
-            group.count += bucket.count;
-            hourly.set(f.channel, group);
-          }
+          )
+            continue;
+          const f = bucket.fact;
+          const group = hourly.get(f.channel) || {
+            rank: f.rank,
+            sum: 0,
+            count: 0,
+            source: sourceLabel(f),
+          };
+          group.sum += bucket.mean * bucket.count;
+          group.count += bucket.count;
+          hourly.set(f.channel, group);
         }
         const best = [...hourly.values()].sort((a, b) => b.rank - a.rank)[0];
         if (best && best.count >= 20) {

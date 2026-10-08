@@ -158,6 +158,13 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
         latest response. Dense arrays stay on the server; raw payloads and
         source record IDs are not returned to this page.
       </p>
+      {data.timings && (
+        <p className="caption">
+          Response work: {data.timings.rpcMs} ms fetching data;{" "}
+          {data.timings.analyticsMs} ms calculating summaries. Metadata reads
+          overlap chart reads.
+        </p>
+      )}
     </>
   );
 }

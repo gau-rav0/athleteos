@@ -57,6 +57,18 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   ]);
   expect(result.partial).toBe(false);
   expect(result.queryCount).toBe(3);
+  expect(Object.keys(result.timings).sort()).toEqual([
+    "analyticsMs",
+    "inventoryMs",
+    "pageMs",
+    "rpcMs",
+    "statusMs",
+  ]);
+  expect(
+    Object.values(result.timings).every(
+      (value) => Number.isFinite(value) && value >= 0,
+    ),
+  ).toBe(true);
 });
 
 test("status timeouts keep validated cached data partial and redact errors", async () => {
@@ -123,4 +135,29 @@ test("worker is independently bounded and rejects malformed success metadata", a
     ],
   });
   await expect(advanceProjection(malformed.client, 7, "UTC")).rejects.toThrow();
+});
+
+test("aborted requests stop future pages and never start projection work", async () => {
+  const controller = new AbortController();
+  const fake = source({
+    ...defaults(),
+    web_facts_cursor: [success(Array.from({ length: 2000 }, () => fact()))],
+  });
+  const original = fake.rpc.getMockImplementation()!;
+  fake.rpc.mockImplementation((name: string) => {
+    const response = original(name);
+    if (name === "web_facts_cursor") controller.abort();
+    return response;
+  });
+  await expect(
+    loadDashboard(fake.client, 7, "UTC", controller.signal),
+  ).rejects.toThrow();
+  expect(
+    fake.rpc.mock.calls.filter(([name]) => name === "web_facts_cursor"),
+  ).toHaveLength(1);
+  const abortedWorker = source({});
+  await expect(
+    advanceProjection(abortedWorker.client, 7, "UTC", controller.signal),
+  ).rejects.toThrow();
+  expect(abortedWorker.rpc).not.toHaveBeenCalled();
 });

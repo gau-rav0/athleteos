@@ -6,7 +6,7 @@ import type {
 import { factSchema, inventorySchema, type Fact } from "./schema";
 import { buildDataset } from "@/lib/analytics/engine";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
-import { projectionStatusSchema } from "./projection";
+import { projectionStatusSchema, rpcSignal } from "./projection";
 
 function rpcFailure(stage: string, code?: string) {
   // Static stages and SQLSTATE only: never log messages, requests or payloads.
@@ -20,7 +20,9 @@ export async function loadDashboard(
   client: SupabaseClient,
   days: number,
   timezone: string,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   const started = performance.now(),
     now = new Date(),
     today = localDay(now, timezone),
@@ -31,27 +33,28 @@ export async function loadDashboard(
   // This serving path is read-only: projection work belongs to a separate POST.
   // Status is an indexed checkpoint/watermark check, not a broad candidate scan.
   let queries = 2;
-  const [status, inventoryResult] = await Promise.all([
-    client
-      .rpc("web_projection_status", { p_from: from, p_until: until })
-      .abortSignal(AbortSignal.timeout(8000)),
-    client
-      .rpc("web_inventory", { p_timezone: timezone })
-      .abortSignal(AbortSignal.timeout(8000)),
+  const metadataStarted = performance.now();
+  let statusMs = 0,
+    inventoryMs = 0,
+    pageMs = 0;
+  // Start metadata concurrently with fact pages. A slow coverage aggregation
+  // must not add another full network round trip before read serving begins.
+  const metadataPromise = Promise.allSettled([
+    Promise.resolve(
+      client
+        .rpc("web_projection_status", { p_from: from, p_until: until })
+        .abortSignal(rpcSignal(8000, signal)),
+    ).finally(() => {
+      statusMs = performance.now() - metadataStarted;
+    }),
+    Promise.resolve(
+      client
+        .rpc("web_inventory", { p_timezone: timezone })
+        .abortSignal(rpcSignal(8000, signal)),
+    ).finally(() => {
+      inventoryMs = performance.now() - metadataStarted;
+    }),
   ]);
-  const parsedStatus = projectionStatusSchema.safeParse(status.data);
-  let remaining =
-    status.error !== null ||
-    !parsedStatus.success ||
-    parsedStatus.data.remaining;
-  if (status.error) rpcFailure("status", status.error.code);
-  // A metadata-query failure must not take valid charts down with it. Empty
-  // inventory here means unavailable metadata, never proof of zero raw records.
-  const parsedInventory = inventorySchema.safeParse(inventoryResult.data);
-  if (inventoryResult.error || !parsedInventory.success) {
-    remaining = true;
-    rpcFailure("inventory", inventoryResult.error?.code);
-  }
   const facts: Fact[] = [];
   let invalid = 0,
     finished = false,
@@ -63,7 +66,9 @@ export async function loadDashboard(
     count < 100000 && !finished && performance.now() < readDeadline;
     count += 2000
   ) {
+    signal?.throwIfAborted();
     queries++;
+    const pageStarted = performance.now();
     const page: PostgrestSingleResponse<unknown> = await client
       .rpc("web_facts_cursor", {
         p_from: from,
@@ -72,7 +77,8 @@ export async function loadDashboard(
         p_before_id: beforeId,
         p_limit: 2000,
       })
-      .abortSignal(AbortSignal.timeout(8000));
+      .abortSignal(rpcSignal(8000, signal));
+    pageMs += performance.now() - pageStarted;
     if (page.error || !Array.isArray(page.data)) {
       rpcFailure("page", page.error?.code);
       // After at least one valid page, retain its partial snapshot. An initial
@@ -106,6 +112,26 @@ export async function loadDashboard(
       beforeId = last.id;
     }
   }
+  const metadata = await metadataPromise;
+  const unavailable = { data: null, error: { code: "UNAVAILABLE" } };
+  const status =
+    metadata[0].status === "fulfilled" ? metadata[0].value : unavailable;
+  const inventoryResult =
+    metadata[1].status === "fulfilled" ? metadata[1].value : unavailable;
+  const parsedStatus = projectionStatusSchema.safeParse(status.data);
+  let remaining =
+    status.error !== null ||
+    !parsedStatus.success ||
+    parsedStatus.data.remaining;
+  if (status.error) rpcFailure("status", status.error.code);
+  // Missing metadata means unavailable inventory, never zero uploaded records.
+  const parsedInventory = inventorySchema.safeParse(inventoryResult.data);
+  if (inventoryResult.error || !parsedInventory.success) {
+    remaining = true;
+    rpcFailure("inventory", inventoryResult.error?.code);
+  }
+  const analyticsStarted = performance.now();
+  signal?.throwIfAborted();
   const inventory =
       parsedInventory.success && !inventoryResult.error
         ? parsedInventory.data
@@ -120,5 +146,14 @@ export async function loadDashboard(
   result.queryCount = queries;
   result.inventoryAvailable = parsedInventory.success && !inventoryResult.error;
   result.queryMs = Math.round(performance.now() - started);
-  return result;
+  // Performance-only counters: no values, identities, row payloads or tokens.
+  return Object.assign(result, {
+    timings: {
+      rpcMs: Math.round(Math.max(statusMs, inventoryMs, pageMs)),
+      analyticsMs: Math.round(performance.now() - analyticsStarted),
+      statusMs: Math.round(statusMs),
+      inventoryMs: Math.round(inventoryMs),
+      pageMs: Math.round(pageMs),
+    },
+  });
 }

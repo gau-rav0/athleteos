@@ -89,6 +89,13 @@ export type Dataset = {
   fetchedAt: string;
   queryCount: number;
   queryMs: number;
+  timings?: {
+    rpcMs: number;
+    analyticsMs: number;
+    statusMs: number;
+    inventoryMs: number;
+    pageMs: number;
+  };
   excludedOverlaps: number;
 };
 const emptyDay = (day: string): Day => ({

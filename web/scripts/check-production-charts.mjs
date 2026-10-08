@@ -18,6 +18,35 @@ base.search = "";
 base.hash = "";
 const browser = await chromium.launch({ headless: true });
 const report = [];
+// Geometry is created by client layout effects. SSR headings alone can become
+// visible before range handlers hydrate, so wait before the first interaction.
+const hasFiniteChartGeometry = () => {
+  const charts = Array.from(document.querySelectorAll(".chart-canvas"));
+  return (
+    charts.length > 0 &&
+    charts.every((chart) => {
+      const rect = chart.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      return Array.from(
+        chart.querySelectorAll(
+          ".recharts-area-curve, .recharts-line-curve, .recharts-bar-rectangle path, .recharts-dot",
+        ),
+      ).some((mark) => {
+        const path = mark.getAttribute("d");
+        if (path && /NaN|Infinity/.test(path)) return false;
+        const box = mark.getBBox();
+        return (
+          Number.isFinite(box.x) &&
+          Number.isFinite(box.y) &&
+          Number.isFinite(box.width) &&
+          Number.isFinite(box.height) &&
+          (box.width > 0 || box.height > 0) &&
+          (mark.tagName.toLowerCase() !== "path" || !!path)
+        );
+      });
+    })
+  );
+};
 try {
   for (const viewport of [
     { width: 1440, height: 1000 },
@@ -41,6 +70,9 @@ try {
         waitUntil: "domcontentloaded",
       });
       await page.getByText("DEMO · synthetic data", { exact: true }).waitFor();
+      await page.waitForFunction(hasFiniteChartGeometry, undefined, {
+        timeout: 20000,
+      });
       for (const range of ["7D", "28D", "90D", "1Y"]) {
         const started = performance.now();
         await page.getByRole("button", { name: range, exact: true }).click();
@@ -52,40 +84,9 @@ try {
           .waitFor();
         // Grid/axes alone do not prove rendering. Wait for finite geometry in
         // every chart with supported observations, including single-point dots.
-        await page.waitForFunction(
-          () => {
-            const charts = Array.from(
-              document.querySelectorAll(".chart-canvas"),
-            );
-            return (
-              charts.length > 0 &&
-              charts.every((chart) => {
-                const rect = chart.getBoundingClientRect();
-                if (rect.width <= 0 || rect.height <= 0) return false;
-                const marks = Array.from(
-                  chart.querySelectorAll(
-                    ".recharts-area-curve, .recharts-line-curve, .recharts-bar-rectangle path, .recharts-dot",
-                  ),
-                );
-                return marks.some((mark) => {
-                  const path = mark.getAttribute("d");
-                  if (path && /NaN|Infinity/.test(path)) return false;
-                  const box = mark.getBBox();
-                  return (
-                    Number.isFinite(box.x) &&
-                    Number.isFinite(box.y) &&
-                    Number.isFinite(box.width) &&
-                    Number.isFinite(box.height) &&
-                    (box.width > 0 || box.height > 0) &&
-                    (mark.tagName.toLowerCase() !== "path" || !!path)
-                  );
-                });
-              })
-            );
-          },
-          undefined,
-          { timeout: 20000 },
-        );
+        await page.waitForFunction(hasFiniteChartGeometry, undefined, {
+          timeout: 20000,
+        });
         assert.equal(
           await page.evaluate(
             () => document.documentElement.scrollWidth > window.innerWidth + 1,

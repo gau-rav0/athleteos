@@ -93,6 +93,7 @@ test("validated caller receives bounded redacted progress and private headers", 
     await mocks.client.mock.results[0].value,
     7,
     "UTC",
+    expect.any(AbortSignal),
   );
   expect(response.headers.get("Cache-Control")).toContain("no-store");
   expect(response.headers.get("Vary")).toBe("Cookie");

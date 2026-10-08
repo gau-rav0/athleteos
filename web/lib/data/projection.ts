@@ -5,6 +5,10 @@ import { dashboardQuery } from "./schema";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
 
 export const projectionStatusSchema = z.object({ remaining: z.boolean() });
+export function rpcSignal(milliseconds: number, signal?: AbortSignal) {
+  const timeout = AbortSignal.timeout(milliseconds);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
 const workerResult = z.object({
   processed: z.number().int().min(0).max(50),
   scanned: z.number().int().min(0).max(2000),
@@ -18,7 +22,9 @@ export async function advanceProjection(
   client: SupabaseClient,
   days: number,
   timezone: string,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted();
   dashboardQuery.parse({ days, timezone });
   const today = localDay(new Date(), timezone);
   const { data, error } = await client
@@ -29,7 +35,7 @@ export async function advanceProjection(
       p_until: new Date(midnight(addDays(today, 1), timezone)).toISOString(),
       p_limit: 25,
     })
-    .abortSignal(AbortSignal.timeout(12000));
+    .abortSignal(rpcSignal(12000, signal));
   if (error) throw new Error("PROJECTION_WORK_UNAVAILABLE");
   return workerResult.parse(data);
 }

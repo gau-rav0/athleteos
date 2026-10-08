@@ -48,7 +48,12 @@ export async function POST(request: Request) {
       );
     // The invoker RPC derives ownership from this validated user's JWT.
     // One bounded transaction; no arbitrary owner or client-selected batch size.
-    const result = await advanceProjection(client, query.days, query.timezone);
+    const result = await advanceProjection(
+      client,
+      query.days,
+      query.timezone,
+      request.signal,
+    );
     return NextResponse.json(result, { headers: privateHeaders });
   } catch {
     console.warn("DASHBOARD_PROJECTION_FAILURE", { stage: "UNAVAILABLE" });

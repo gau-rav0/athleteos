@@ -251,6 +251,56 @@ describe("authenticated SQL projections", () => {
         compactPageBytes: JSON.stringify(page.rows[0].result).length,
       }),
     );
+    // Optional synthetic profiling only. The unproven index is not a migration
+    // and is never applied by the normal validation/deployment path.
+    if (process.env.ATHLETEOS_PROFILE_INDEX === "1") {
+      await db.exec("reset role");
+      await db.exec("begin");
+      await db.exec(
+        readFileSync(
+          resolve("../docs/performance/RAW_INVENTORY_INDEX_CANDIDATE.sql"),
+          "utf8",
+        ),
+      );
+      await db.exec("commit");
+      await db.exec("vacuum analyze public.raw_health_records");
+      await user(owner);
+      const inventoryPlan = await db.query<{
+        "QUERY PLAN": { Plan: { Plans?: unknown[] } }[];
+      }>(
+        "explain (format json) select provider,record_type,count(*),count(distinct (start_time at time zone 'UTC')::date),min(start_time),max(start_time),max(received_at),count(*) filter(where ingestion_origin='historical') from public.raw_health_records where user_id=(select auth.uid()) and not deleted group by provider,record_type",
+      );
+      const planText = JSON.stringify(inventoryPlan.rows);
+      console.info(
+        JSON.stringify({
+          syntheticInventoryIndexOnly: planText.includes("Index Only Scan"),
+          syntheticInventoryCoveringIndexUsed: planText.includes(
+            "raw_web_inventory_covering",
+          ),
+        }),
+      );
+      const inventoryStart = performance.now();
+      const indexedInventory = await db.query<{ result: unknown }>(
+        "select public.web_inventory('UTC') result",
+      );
+      const indexedInventoryMs = Math.round(performance.now() - inventoryStart);
+      await db.exec("reset role;drop index public.raw_web_inventory_covering");
+      await user(owner);
+      const unindexedStart = performance.now();
+      const unindexedInventory = await db.query<{ result: unknown }>(
+        "select public.web_inventory('UTC') result",
+      );
+      expect(indexedInventory.rows[0].result).toEqual(
+        unindexedInventory.rows[0].result,
+      );
+      console.info(
+        JSON.stringify({
+          syntheticRawRecords: 200000,
+          indexedInventoryMs,
+          unindexedInventoryMs: Math.round(performance.now() - unindexedStart),
+        }),
+      );
+    }
     const workerStart = performance.now();
     const worker = await db.query<{
       result: { processed: number; scanned: number; remaining: boolean };

@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       client,
       query.data.days,
       query.data.timezone,
+      request.signal,
     );
     return NextResponse.json(result, { headers: privateHeaders });
   } catch (error) {

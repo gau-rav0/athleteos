@@ -61,3 +61,7 @@ The separate `athleteos-web-dashboard-v1` worktree is preserved. The original `a
 8. Historical import stays a separate workflow. Do not begin it as an automatic follow-up; finish the dashboard and confirm the applicable separate authorization/scope first.
 
 Dashboard/test servers were stopped for the pause. Do not restart them until RESUME. No phone-side background upload was stopped.
+
+## Current performance follow-up
+
+Migration 0008 and the first resumed dashboard deployment are live. Live charts render, but the checked 28-day response remained partial at 24,939 ms; milestone A remains open. The next patch passes 54 unit/database tests, lint and production build and adds Tokyo function placement, overlapping metadata reads, bounded calendar caching, request cancellation and redacted timing counters. Deploy it next, verify actual authenticated ranges/repeated reads, then update this checkpoint and draft PR #2. The index trial is preserved outside migrations and was not deployed. Historical ZIP remains unopened; product feature milestone has not begun.

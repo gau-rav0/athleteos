@@ -105,10 +105,13 @@ export function TrendChart({
         aria-label={`${label} trend: ${valid} observed days in the selected ${days.length}-day range`}
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          {/* Render series directly in SVG; avoid blank portal layers during hydration. */}
           {type === "bar" ? (
             <BarChart data={data} accessibilityLayer>
               {common}
               <Bar
+                zIndex={0}
+                isAnimationActive={false}
                 dataKey="value"
                 fill={color}
                 radius={[3, 3, 0, 0]}
@@ -119,6 +122,7 @@ export function TrendChart({
             <LineChart data={data} accessibilityLayer>
               {common}
               <Line
+                zIndex={0}
                 dataKey="value"
                 stroke={color}
                 strokeWidth={2}
@@ -131,6 +135,7 @@ export function TrendChart({
             <AreaChart data={data} accessibilityLayer>
               {common}
               <Area
+                zIndex={0}
                 dataKey="value"
                 stroke={color}
                 fill={color}

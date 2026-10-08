@@ -213,8 +213,9 @@ export function Explanation({ name, data }: { name: string; data: Dataset }) {
           <h3>{data.readiness.version}</h3>
           <p className="caption">
             Baseline: 35 previous days. At least 28 paired observed days (80%)
-            and all three current inputs are required. Confidence remains
-            MODERATE, never inflated by redistributing missing weights.
+            and all three current inputs are required. A produced score has at
+            most MODERATE confidence, never inflated by redistributing missing
+            weights.
           </p>
           <div className="source-codes">
             {[
@@ -228,6 +229,28 @@ export function Explanation({ name, data }: { name: string; data: Dataset }) {
               </div>
             ))}
           </div>
+          <p className="caption">
+            Output confidence: {data.readiness.confidence}. Current inputs:{" "}
+            {data.days.at(-1)?.sleep != null
+              ? "sleep observed"
+              : "sleep unavailable"}
+            ,{" "}
+            {data.days.at(-1)?.hrv != null
+              ? "RMSSD observed"
+              : "RMSSD unavailable"}
+            ,{" "}
+            {data.days.at(-1)?.overnightHr != null
+              ? "sleep-window HR observed"
+              : "sleep-window HR unavailable"}
+            .
+          </p>
+          {data.readiness.contributors.map((c) => (
+            <p className="caption" key={c.name}>
+              {c.name}: {c.direction}; {c.samples} paired baseline days;{" "}
+              {Math.round(c.weight * 100)}% weight; component{" "}
+              {Math.round(c.score)}/100.
+            </p>
+          ))}
           <p className="caption">
             RMSSD component = clamp(70 + 15 × robust z). Sleep component =
             clamp(100 × minutes / 480). HR component = clamp(70 − 15 × robust

@@ -39,6 +39,13 @@ test("five demo screens, ranges, drilldown, charts and responsive layout", async
     ).toBeVisible();
     await expect(
       page
+        .locator(
+          ".recharts-area-curve, .recharts-line-curve, .recharts-bar-rectangle",
+        )
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page
         .getByRole("navigation", { name: "Primary navigation" })
         .getByRole("link"),
     ).toHaveCount(5);
@@ -60,6 +67,8 @@ test("five demo screens, ranges, drilldown, charts and responsive layout", async
   await expect(
     page.getByText("experimental-readiness-v0.1", { exact: true }),
   ).toBeVisible();
+  await expect(page.getByText(/Output confidence: MODERATE/)).toBeVisible();
+  await expect(page.getByText(/paired baseline days/)).toHaveCount(3);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page

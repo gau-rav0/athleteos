@@ -26,7 +26,7 @@ APP_ORIGIN=http://127.0.0.1:3100
 
 These variables are server-only. No service-role key is needed. Do not commit environment files or put passwords into configuration. Sign in using the existing AthleteOS Supabase Email/Password account, not a GitHub or Supabase dashboard account.
 
-Apply additive migration `supabase/migrations/0005_web_dashboard_facts.sql` to the existing project using the Supabase CLI after reviewing the SQL and running the database tests. Never edit migrations 0001–0004. Then run:
+Apply additive migration `supabase/migrations/0005_web_dashboard_facts.sql` to the existing project using the Supabase CLI after reviewing the SQL and running the database tests. Never edit applied migrations. Migrations 0006–0007 optimize projection reads and bounded per-owner refresh without changing canonical ingestion. Then run:
 
 ```powershell
 npm run dev
@@ -36,7 +36,7 @@ Open `http://127.0.0.1:3100/login`. The synthetic preview is `http://127.0.0.1:3
 
 ## Data and performance
 
-`web_health_facts` is a disposable, owner-protected projection of existing `raw_health_records`, not a separate legacy health store. It stores compact scalar/session/hourly facts and tracks the raw revision through `received_at`. `refresh_web_facts` processes at most 1,000 records per call; a dashboard request processes at most two batches. Older/large selected windows may need several refreshes. Partial windows visibly withhold scores and associations. Existing raw tombstones and changed revisions are excluded immediately until the projection catches up.
+`web_health_facts` is a disposable, owner-protected projection of existing `raw_health_records`, not a separate legacy health store. It stores compact scalar/session/hourly facts and tracks the raw revision through `received_at`. `refresh_web_facts` processes at most 1,000 records per call; a dashboard request processes at most two batches of 100 records. Timed-out refresh transactions are retried with 25 records; if still cancelled, valid cached facts are returned as partial. Older/large selected windows may need several refreshes. Partial windows visibly withhold scores and associations. Existing raw tombstones and changed revisions are excluded immediately until the projection catches up.
 
 Bounded read pages contain at most 1,000 facts. The server fetches five pages concurrently, capped at 100,000 facts in a 734-day window including boundary padding. It returns at most 730 daily points rather than nested raw samples. If the cap or schema validation is reached, the result is partial, never silently complete. Dense HC heart-rate arrays are compressed inside PostgreSQL. Query count and server elapsed time are visible in the data quality drawer. The SQL tests use 200,000 invented raw records and a 15,000-sample invented HR record.
 
@@ -57,6 +57,8 @@ npm audit --omit=dev
 Browser tests use an isolated test-only HTTP Auth/RPC provider on ports 3200/3201 with invented accounts. This tests SSR login/logout, cookies, account switching and UI behavior. Real PostgreSQL RLS behavior is separately exercised by PGlite tests running the repository migrations with an Auth shim and two synthetic principals. Browser traces, screenshots and videos are disabled. Public demo test states are `?state=empty`, `sparse`, `partial`, or `error`; those parameters never alter private data APIs.
 
 ## Hosting
+
+Hosted stability and production chart rendering are still under investigation; see WEB_VALIDATION.md. The experimental preview is deployed at https://athleteos-dashboard.vercel.app on Vercel Hobby. Public visitors see only login or the labeled synthetic demo; all personal screens and APIs require AthleteOS authentication. The project was deployed with the CLI from `web/`; GitHub pushes do not automatically deploy unless Git integration is separately configured. Subsequent source releases use `npx vercel deploy --prod` from that directory after validation. Hosting configuration and environment files remain outside Git.
 
 Use a free/development Vercel project rooted at `web/`. Set the three server variables in the hosting dashboard; production `APP_ORIGIN` must equal the exact HTTPS origin. Build with `npm run build`, start with `npm run start` on a suitable Node host, and configure the Supabase site/redirect URLs if future recovery links are added. No paid upgrade is authorized. Existing password sign-in does not require a browser OAuth callback.
 

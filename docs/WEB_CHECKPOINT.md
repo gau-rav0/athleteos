@@ -1,14 +1,26 @@
+# Stopped at user request — 2026-10-08
+
+Development is paused. Preserve this feature worktree and the original ingestion checkout. Do not resume automatically.
+
+Validated source: 35 unit/database tests, 10 desktop/mobile E2E tests, strict TypeScript, lint and production build pass. E2E now checks actual plotted SVG marks and readiness explanation counts. Timeout handling uses smaller batches, partial cached responses and static redacted error stages. Polls cannot overlap within a screen. Migrations 0005–0007 are deployed; 0006 optimizes reads, 0007 bounds and serializes per-owner projection refresh. Ownership/invoker semantics are preserved.
+
+Hosted URL: https://athleteos-dashboard.vercel.app. User sign-in succeeded. Anonymous access checks pass. Hosting is NOT accepted as stable: live refresh has intermittently returned 503/SQLSTATE 57014; some later requests returned 200 partial data. Stability after migration 0007 remains unverified. A production synthetic chart-path check timed out despite passing development-browser plotted-mark tests; production rendering needs further investigation. Do not claim launch completion.
+
+Next steps only after explicit resume: investigate hosted query timings and production chart rendering; compare production versus development hydration; rerun hosted live-data and logout checks; update draft PR #2 after acceptance. Historical import, phone validation and upload-queue operations remain separate and untouched. Branch: feat/athleteos-web-dashboard-v1. Use git rev-parse HEAD for the checkpoint SHA.
+
+---
+
 # Paused dashboard checkpoint — 2026-10-08
 
 The user explicitly resumed dashboard development on 2026-10-08. The original pause notes below are preserved as history. Historical import, phone operations and ingestion acceptance work remain outside this dashboard task.
 
 ## Resumed validation
 
-The scrollable-table accessibility defect is fixed. All 32 unit/database tests and all 10 desktop/mobile browser tests pass; TypeScript, lint and production build pass. The mobile logout navigation race in the test was fixed by waiting for the login document to settle. Sources, reusable UI primitives and the screen rendering have been separated into components.
+The scrollable-table accessibility defect is fixed. All 35 unit/database tests and all 10 desktop/mobile browser tests pass; TypeScript, lint and production build pass. The mobile logout navigation race in the test was fixed by waiting for the login document to settle. Sources, reusable UI primitives and the screen rendering have been separated into components.
 
 Migration 0005 is deployed to the existing project. Deployed RLS is enabled with three ownership policies, all dashboard RPCs are invokers, and anonymous RPC execution is denied. The user privately signed in to the local production preview on port 3100. Live supported metrics render; RMSSD/readiness and respiratory-rate absence remain explicit. Initial projection processing remains partial and visibly qualified.
 
-The user authorized Vercel CLI hosting access. A Hobby-tier project is configured, with server environment values stored outside Git and explicit deployment upload exclusions. Hosting verification and final delivery are in progress; see WEB_VALIDATION.md for the latest results. No historical import or phone-queue changes occurred.
+The user authorized Vercel CLI hosting access. The Hobby-tier production deployment is READY at https://athleteos-dashboard.vercel.app. HTTPS, anonymous redirects/API denial, hostile-origin rejection and public-asset configuration scans passed. The user has been asked to sign in privately on the hosted page for final live-session verification. Server environment values remain outside Git. No historical import or phone-queue changes occurred.
 
 Branch: `feat/athleteos-web-dashboard-v1`. PR: https://github.com/gau-rav0/athleteos/pull/2 (draft). First pushed milestone: `4f0b8c023697356b93a9b60b2327431a6a3498be`. This checkpoint is saved in the subsequent checkpoint commit; use `git rev-parse HEAD` for its exact SHA.
 

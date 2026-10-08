@@ -94,8 +94,11 @@ export function Dashboard({
   useEffect(() => {
     if (demo || logoutBusy) return;
     const controller = new AbortController();
-    let active = true;
+    let active = true,
+      inFlight = false;
     const refresh = async () => {
+      if (inFlight || !active) return;
+      inFlight = true;
       try {
         const response = await fetch(
           `/api/dashboard?days=${days}&timezone=${encodeURIComponent(timezone)}`,
@@ -127,6 +130,8 @@ export function Dashboard({
             message:
               "Could not refresh your dashboard. Please retry; missing values have not been replaced.",
           });
+      } finally {
+        inFlight = false;
       }
     };
     void refresh();

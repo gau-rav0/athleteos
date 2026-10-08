@@ -30,7 +30,20 @@ export async function GET(request: Request) {
       query.data.timezone,
     );
     return NextResponse.json(result, { headers: privateHeaders });
-  } catch {
+  } catch (error) {
+    const safeStages = [
+      "DATA_SUMMARIES_UNAVAILABLE",
+      "DATA_READ_UNAVAILABLE",
+      "DATA_INVENTORY_UNAVAILABLE",
+    ];
+    console.warn("DASHBOARD_DATA_FAILURE", {
+      stage:
+        error instanceof Error && safeStages.includes(error.message)
+          ? error.message
+          : error instanceof Error && error.name === "ZodError"
+            ? "INVENTORY_SCHEMA"
+            : "UNAVAILABLE",
+    });
     return NextResponse.json(
       { error: "DASHBOARD_DATA_UNAVAILABLE" },
       { status: 503, headers: privateHeaders },

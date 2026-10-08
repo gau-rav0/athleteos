@@ -49,6 +49,8 @@ Never commit:
 
 ## Current status
 
+For the latest dashboard progress, completed work, remaining milestones, known issues and reviewer commands, start with [the review handoff](docs/REVIEW_STATUS.md). Review `feat/athleteos-web-dashboard-v1` / [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2); this feature work has not been merged into `main`. Production reliability acceptance and historical import remain in progress.
+
 An experimental five-screen web dashboard preview is available in `web/`, explicitly approved ahead of final ingestion acceptance. See [web setup and deployment](docs/WEB_DASHBOARD.md), [analytics formulas](docs/WEB_ANALYTICS_V0.md), and [privacy boundaries](docs/WEB_SECURITY.md). This preview does not certify Phase 1 completion.
 
 Phase 1 Android/Health Connect, durable Room queue, sync engine, Auth/RLS backend, infrastructure UI and the audited-format offline historical importer are implemented. **Phase 1 is not accepted as complete:** runtime Samsung authorization/reads, private export/overlap validation, Supabase deployment and the physical seven-day reliability gate remain outstanding. Phases 2–6 have not been implemented.

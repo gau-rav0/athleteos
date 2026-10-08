@@ -108,6 +108,16 @@ export function Dashboard({
       preferInventory = true,
       lastRead = 0;
     let workTimer: ReturnType<typeof setTimeout> | undefined;
+    const expireSession = () => {
+      // Stop maintenance immediately: document navigation can remain pending.
+      // Leaving expired deadlines active would schedule repeated zero-delay POSTs.
+      active = false;
+      controller.abort();
+      if (workTimer) clearTimeout(workTimer);
+      setSnapshot(null);
+      setPanel(null);
+      window.location.replace("/login");
+    };
     const scheduleWork = () => {
       if (
         !active ||
@@ -162,8 +172,7 @@ export function Dashboard({
         );
         if (!active) return;
         if (response.status === 401) {
-          setSnapshot(null);
-          window.location.replace("/login");
+          expireSession();
           return;
         }
         if (!response.ok) throw new Error("WORK_UNAVAILABLE");
@@ -217,8 +226,7 @@ export function Dashboard({
         );
         if (!active) return;
         if (response.status === 401) {
-          setSnapshot(null);
-          window.location.replace("/login");
+          expireSession();
           return;
         }
         if (!response.ok)

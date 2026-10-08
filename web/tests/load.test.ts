@@ -172,6 +172,70 @@ test("later fact read failure retains earlier pages as explicitly partial", asyn
   expect(fake.rpc).toHaveBeenCalledTimes(4);
 });
 
+test("late fact pages use only the remaining 14s read budget and retain cached charts", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  let elapsed = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+  const deadlines = vi.spyOn(AbortSignal, "timeout");
+  const fixture = fact();
+  const fake = source({
+    ...defaults(),
+    web_facts_cursor: [
+      success(Array.from({ length: 2000 }, () => fixture)),
+      failure,
+    ],
+  });
+  const original = fake.rpc.getMockImplementation()!;
+  let pages = 0;
+  fake.rpc.mockImplementation((name, args) => {
+    const response = original(name, args);
+    if (name !== "web_facts_cursor") return response;
+    return Object.assign(response, {
+      abortSignal: () => {
+        // Simulate first-page work including transport/validation overhead,
+        // then the late page timing out at the overall read deadline.
+        elapsed = ++pages === 1 ? 13249.4 : 14000;
+        return response;
+      },
+    });
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(deadlines.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([
+    8000, 8000, 8000, 750,
+  ]);
+  expect(pages).toBe(2);
+  expect(result.partial).toBe(true);
+  expect(result.days.at(-1)?.steps).toBe(100);
+  expect(result.readiness.score).toBeNull();
+});
+
+test("exhausted serving budget starts no additional fact page", async () => {
+  let elapsed = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+  const fixture = fact();
+  const fake = source({
+    ...defaults(),
+    web_facts_cursor: [success(Array.from({ length: 2000 }, () => fixture))],
+  });
+  const original = fake.rpc.getMockImplementation()!;
+  fake.rpc.mockImplementation((name, args) => {
+    const response = original(name, args);
+    if (name !== "web_facts_cursor") return response;
+    return Object.assign(response, {
+      abortSignal: () => {
+        elapsed = 14000;
+        return response;
+      },
+    });
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(
+    fake.rpc.mock.calls.filter(([name]) => name === "web_facts_cursor"),
+  ).toHaveLength(1);
+  expect(result.partial).toBe(true);
+  expect(result.days.at(-1)?.steps).toBe(100);
+});
+
 test("worker is independently bounded and rejects malformed success metadata", async () => {
   const fake = source({
     advance_web_projection: [

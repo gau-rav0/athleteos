@@ -71,8 +71,16 @@ export async function loadDashboard(
     count += 2000
   ) {
     signal?.throwIfAborted();
-    queries++;
     const pageStarted = performance.now();
+    const remainingReadMs = readDeadline - pageStarted;
+    if (remainingReadMs <= 0) break;
+    // A late page gets only the remaining serving budget, rather than another
+    // full eight seconds. AbortSignal.timeout requires positive integer ms.
+    const pageTimeoutMs = Math.max(
+      1,
+      Math.min(8000, Math.floor(remainingReadMs)),
+    );
+    queries++;
     const page: PostgrestSingleResponse<unknown> = await client
       .rpc("web_facts_cursor", {
         p_from: from,
@@ -81,7 +89,7 @@ export async function loadDashboard(
         p_before_id: beforeId,
         p_limit: 2000,
       })
-      .abortSignal(rpcSignal(8000, signal));
+      .abortSignal(rpcSignal(pageTimeoutMs, signal));
     pageMs += performance.now() - pageStarted;
     if (page.error || !Array.isArray(page.data)) {
       rpcFailure("page", page.error?.code);

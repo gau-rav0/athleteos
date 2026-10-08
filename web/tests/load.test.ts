@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 vi.mock("server-only", () => ({}));
 import { loadDashboard } from "@/lib/data/load";
 import { advanceProjection } from "@/lib/data/projection";
+import { refreshInventory } from "@/lib/data/inventory";
 import type { Fact } from "@/lib/data/schema";
 
 afterEach(() => vi.restoreAllMocks());
@@ -24,7 +25,18 @@ function source(
 }
 const defaults = () => ({
   web_projection_status: [success({ remaining: false })],
-  web_inventory: [success({ inventory: [], sync: null })],
+  read_web_inventory_snapshot: [
+    success({
+      inventory: [],
+      sync: null,
+      snapshot: {
+        as_of: new Date().toISOString(),
+        stale: false,
+        available: true,
+        refresh_required: false,
+      },
+    }),
+  ],
 });
 const fact = (): Fact => ({
   id: "00000000-0000-4000-8000-000000000010",
@@ -52,7 +64,7 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(fake.rpc.mock.calls.map(([name]) => name)).toEqual([
     "web_projection_status",
-    "web_inventory",
+    "read_web_inventory_snapshot",
     "web_facts_cursor",
   ]);
   expect(result.partial).toBe(false);
@@ -85,15 +97,15 @@ test("status timeouts keep validated cached data partial and redact errors", asy
   expect(JSON.stringify(warn.mock.calls)).not.toContain("private payload");
 });
 
-test("inventory failure retains valid charts with partial coverage", async () => {
+test("inventory failure retains valid charts without misclassifying fact coverage", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   const fake = source({
     ...defaults(),
-    web_inventory: [failure],
+    read_web_inventory_snapshot: [failure],
     web_facts_cursor: [success([fact()])],
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
-  expect(result.partial).toBe(true);
+  expect(result.partial).toBe(false);
   expect(result.days.at(-1)?.steps).toBe(100);
   expect(result.inventoryAvailable).toBe(false);
 });
@@ -160,4 +172,41 @@ test("aborted requests stop future pages and never start projection work", async
     advanceProjection(abortedWorker.client, 7, "UTC", controller.signal),
   ).rejects.toThrow();
   expect(abortedWorker.rpc).not.toHaveBeenCalled();
+});
+
+test("metadata worker validates its private result and sanitizes failures", async () => {
+  const fake = source({
+    refresh_web_inventory_snapshot: [
+      success({
+        refreshed: false,
+        busy: true,
+        snapshot: {
+          as_of: null,
+          available: false,
+          stale: true,
+          refresh_required: true,
+        },
+      }),
+    ],
+  });
+  expect((await refreshInventory(fake.client, "UTC")).busy).toBe(true);
+  const malformed = source({
+    refresh_web_inventory_snapshot: [
+      success({
+        refreshed: true,
+        busy: false,
+        snapshot: {
+          as_of: null,
+          available: true,
+          stale: false,
+          refresh_required: false,
+        },
+      }),
+    ],
+  });
+  await expect(refreshInventory(malformed.client, "UTC")).rejects.toThrow();
+  const failed = source({ refresh_web_inventory_snapshot: [failure] });
+  await expect(refreshInventory(failed.client, "UTC")).rejects.toThrow(
+    "INVENTORY_WORK_UNAVAILABLE",
+  );
 });

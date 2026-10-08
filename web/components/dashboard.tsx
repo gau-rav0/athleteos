@@ -99,32 +99,65 @@ export function Dashboard({
       workInFlight = false,
       partial = true,
       workDelay = 2000,
+      inventoryPending = false,
+      inventoryDelay = 2000,
+      projectionDue = Date.now() + 2000,
+      inventoryDue = Date.now() + 2000,
+      preferInventory = true,
       lastRead = 0;
     let workTimer: ReturnType<typeof setTimeout> | undefined;
     const scheduleWork = () => {
-      if (!active || !partial || workTimer || workInFlight) return;
+      if (
+        !active ||
+        (!partial && !inventoryPending) ||
+        workTimer ||
+        workInFlight
+      )
+        return;
+      const delay = Math.min(
+        partial ? Math.max(0, projectionDue - Date.now()) : Infinity,
+        inventoryPending ? Math.max(0, inventoryDue - Date.now()) : Infinity,
+      );
       workTimer = setTimeout(() => {
         workTimer = undefined;
         void work();
-      }, workDelay);
+      }, delay);
     };
     const work = async () => {
-      if (!active || !partial || workInFlight) return;
+      if (!active || (!partial && !inventoryPending) || workInFlight) return;
       if (document.visibilityState !== "visible") {
-        workDelay = 20000;
+        projectionDue = inventoryDue = Date.now() + 20000;
         scheduleWork();
         return;
       }
+      const inventoryWork =
+        inventoryPending &&
+        inventoryDue <= Date.now() &&
+        (!partial || projectionDue > Date.now() || preferInventory);
+      if (!inventoryWork && (!partial || projectionDue > Date.now())) {
+        scheduleWork();
+        return;
+      }
+      // One maintenance request at a time. Independent deadlines/backoff keep
+      // a failing coverage refresh from starving physiological projection work.
+      preferInventory = !inventoryWork;
       workInFlight = true;
       try {
-        const response = await fetch("/api/dashboard/projection", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ days, timezone }),
-          cache: "no-store",
-          credentials: "same-origin",
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          inventoryWork
+            ? "/api/dashboard/inventory"
+            : "/api/dashboard/projection",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(
+              inventoryWork ? { timezone } : { days, timezone },
+            ),
+            cache: "no-store",
+            credentials: "same-origin",
+            signal: controller.signal,
+          },
+        );
         if (!active) return;
         if (response.status === 401) {
           setSnapshot(null);
@@ -133,17 +166,35 @@ export function Dashboard({
         }
         if (!response.ok) throw new Error("WORK_UNAVAILABLE");
         const progress = await response.json();
-        if (
-          typeof progress.remaining !== "boolean" ||
-          typeof progress.busy !== "boolean"
-        )
+        if (typeof progress.busy !== "boolean")
           throw new Error("INVALID_PROGRESS");
-        partial = progress.remaining;
-        workDelay = progress.busy ? Math.min(workDelay * 2, 60000) : 2000;
-        if (!partial) void refresh();
+        if (inventoryWork) {
+          if (typeof progress.snapshot?.refresh_required !== "boolean")
+            throw new Error("INVALID_INVENTORY_PROGRESS");
+          inventoryPending =
+            progress.busy || progress.snapshot.refresh_required;
+          inventoryDelay = progress.busy
+            ? Math.min(inventoryDelay * 2, 60000)
+            : 2000;
+          inventoryDue = Date.now() + inventoryDelay;
+          if (!inventoryPending) void refresh();
+        } else {
+          if (typeof progress.remaining !== "boolean")
+            throw new Error("INVALID_PROGRESS");
+          partial = progress.remaining;
+          workDelay = progress.busy ? Math.min(workDelay * 2, 60000) : 2000;
+          projectionDue = Date.now() + workDelay;
+          if (!partial) void refresh();
+        }
       } catch {
         // Backfill failure never replaces valid cached charts with an error page.
-        workDelay = Math.min(workDelay * 2, 60000);
+        if (inventoryWork) {
+          inventoryDelay = Math.min(inventoryDelay * 2, 60000);
+          inventoryDue = Date.now() + inventoryDelay;
+        } else {
+          workDelay = Math.min(workDelay * 2, 60000);
+          projectionDue = Date.now() + workDelay;
+        }
       } finally {
         workInFlight = false;
         scheduleWork();
@@ -177,6 +228,8 @@ export function Dashboard({
           setSnapshot({ key, data: result });
           setError(null);
           partial = result.partial;
+          inventoryPending =
+            result.inventorySnapshot?.refresh_required ?? false;
           scheduleWork();
         }
       } catch {

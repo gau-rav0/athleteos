@@ -2,7 +2,7 @@
 
 The latest user master task explicitly resumes dashboard work and authorizes agents, validated milestone pushes, production fixes and private historical audit preparation. The old pause records below are historical. Current scope/ownership and import approval gates are in PLATFORM_EXECUTION.md; current verification is in WEB_VALIDATION.md. Keep the existing feature branch and draft PR #2. Do not change Android or phone upload queues. First historical production upload still needs explicit approval after the private audit and overlap review.
 
-Privacy safeguards, production chart regressions and the responsive redesign are pushed. The bounded projection reliability patch passes 51 unit/database tests, TypeScript, lint, production build and 20 functional desktop/mobile browser checks (including focused reruns). Migration 0008 and deployment await live acceptance. Historical ZIP is still unopened; product feature milestone remains pending.
+Privacy safeguards, production chart regressions, responsive redesign, migration 0008 and Tokyo deployment are live. Initial live chart checks improved, but inventory timeouts and partial long ranges remain; milestone A is not yet accepted. Auth transport checkpoint c21906b is pushed. The new migration 0009 coverage-snapshot integration passes 74 unit/database tests, TypeScript, lint, production build and all 28 distinct desktop/mobile browser cases across the full run and focused cleanup rerun. Deploy this integration and repeat authenticated five-screen/range checks next. Historical ZIP is still unopened; product feature milestone remains pending.
 
 # Earlier stop at user request — 2026-10-08
 

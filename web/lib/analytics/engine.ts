@@ -1,4 +1,9 @@
-import type { Fact, Inventory, Session } from "@/lib/data/schema";
+import type {
+  Fact,
+  Inventory,
+  InventorySnapshot,
+  Session,
+} from "@/lib/data/schema";
 import { addDays, clockMinutes, localDay, splitInterval } from "./time";
 import { association, deviation, median, robustBaseline } from "./statistics";
 export const ANALYTICS_VERSION = "athleteos-analytics-v0.1";
@@ -73,6 +78,7 @@ export type Dataset = {
   workouts: Session[];
   inventory: Inventory;
   inventoryAvailable?: boolean;
+  inventorySnapshot?: InventorySnapshot;
   partial: boolean;
   invalidFacts: number;
   readiness: Readiness;

@@ -6,8 +6,8 @@ export function InventoryTable({ data }: { data: Dataset }) {
   if (data.inventoryAvailable === false)
     return (
       <p className="notice">
-        Server inventory is temporarily unavailable. This does not mean your
-        uploaded records are missing.
+        Coverage counts are not available yet. This does not mean your uploaded
+        records are missing. Charts use their separately validated summaries.
       </p>
     );
   return (
@@ -66,6 +66,18 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
       <Status tone={demo ? "demo" : "blue"}>
         {demo ? "DEMO · synthetic inventory" : "Authenticated server inventory"}
       </Status>
+      {data.inventorySnapshot && (
+        <p className="notice">
+          {data.inventorySnapshot.available && data.inventorySnapshot.as_of
+            ? `Coverage checked ${new Date(data.inventorySnapshot.as_of).toLocaleString("en", { timeZone: data.timezone })}.`
+            : "Preparing coverage counts."}{" "}
+          {data.inventorySnapshot.stale && data.inventorySnapshot.available
+            ? "These counts describe the last completed check; newer uploads may not be included."
+            : ""}{" "}
+          Coverage counts refresh separately from chart summaries. Missing or
+          older coverage counts do not indicate a health problem.
+        </p>
+      )}
       <p className="panel-copy">
         Only uploaded server records are represented. Phone-only or queued
         observations cannot appear here. Raw records, sample observations,
@@ -75,9 +87,10 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
         <div>
           <span>Latest server run</span>
           <strong>
-            {data.inventoryAvailable === false
-              ? "Inventory unavailable"
-              : data.inventory.sync?.status || "No run recorded"}
+            {data.inventory.sync?.status ||
+              (data.inventoryAvailable === false
+                ? "Run metadata unavailable"
+                : "No run recorded")}
           </strong>
         </div>
         <div>

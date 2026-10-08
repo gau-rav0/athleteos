@@ -3,7 +3,7 @@ import type {
   SupabaseClient,
   PostgrestSingleResponse,
 } from "@supabase/supabase-js";
-import { factSchema, inventorySchema, type Fact } from "./schema";
+import { factSchema, inventorySnapshotSchema, type Fact } from "./schema";
 import { buildDataset } from "@/lib/analytics/engine";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
 import { projectionStatusSchema, rpcSignal } from "./projection";
@@ -49,7 +49,7 @@ export async function loadDashboard(
     }),
     Promise.resolve(
       client
-        .rpc("web_inventory", { p_timezone: timezone })
+        .rpc("read_web_inventory_snapshot", { p_timezone: timezone })
         .abortSignal(rpcSignal(8000, signal)),
     ).finally(() => {
       inventoryMs = performance.now() - metadataStarted;
@@ -119,22 +119,26 @@ export async function loadDashboard(
   const inventoryResult =
     metadata[1].status === "fulfilled" ? metadata[1].value : unavailable;
   const parsedStatus = projectionStatusSchema.safeParse(status.data);
-  let remaining =
+  const remaining =
     status.error !== null ||
     !parsedStatus.success ||
     parsedStatus.data.remaining;
   if (status.error) rpcFailure("status", status.error.code);
   // Missing metadata means unavailable inventory, never zero uploaded records.
-  const parsedInventory = inventorySchema.safeParse(inventoryResult.data);
+  const parsedInventory = inventorySnapshotSchema.safeParse(
+    inventoryResult.data,
+  );
   if (inventoryResult.error || !parsedInventory.success) {
-    remaining = true;
     rpcFailure("inventory", inventoryResult.error?.code);
   }
   const analyticsStarted = performance.now();
   signal?.throwIfAborted();
   const inventory =
       parsedInventory.success && !inventoryResult.error
-        ? parsedInventory.data
+        ? {
+            inventory: parsedInventory.data.inventory,
+            sync: parsedInventory.data.sync,
+          }
         : { inventory: [], sync: null },
     result = buildDataset(facts, inventory, {
       days,
@@ -144,7 +148,14 @@ export async function loadDashboard(
       invalidFacts: invalid,
     });
   result.queryCount = queries;
-  result.inventoryAvailable = parsedInventory.success && !inventoryResult.error;
+  result.inventoryAvailable =
+    parsedInventory.success &&
+    !inventoryResult.error &&
+    parsedInventory.data.snapshot.available;
+  result.inventorySnapshot =
+    parsedInventory.success && !inventoryResult.error
+      ? parsedInventory.data.snapshot
+      : { as_of: null, stale: true, available: false, refresh_required: true };
   result.queryMs = Math.round(performance.now() - started);
   // Performance-only counters: no values, identities, row payloads or tokens.
   return Object.assign(result, {

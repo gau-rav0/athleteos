@@ -104,6 +104,14 @@ createServer(async (req, res) => {
     date = now.slice(0, 10),
     start = date + "T00:00:00Z",
     end = date + "T23:59:00Z";
+  const snapshot = {
+    as_of: now,
+    stale: false,
+    available: true,
+    refresh_required: false,
+  };
+  if (url.pathname === "/rest/v1/rpc/refresh_web_inventory_snapshot")
+    return send(200, { refreshed: false, busy: false, snapshot });
   if (url.pathname === "/rest/v1/rpc/web_facts_cursor")
     return send(
       200,
@@ -132,8 +140,12 @@ createServer(async (req, res) => {
           ]
         : [],
     );
-  if (url.pathname === "/rest/v1/rpc/web_inventory")
+  if (
+    url.pathname === "/rest/v1/rpc/web_inventory" ||
+    url.pathname === "/rest/v1/rpc/read_web_inventory_snapshot"
+  )
     return send(200, {
+      snapshot,
       inventory: [
         {
           provider: "health_connect",

@@ -30,6 +30,7 @@ describe("authenticated SQL projections", () => {
       "0006_web_projection_reads.sql",
       "0007_web_projection_refresh.sql",
       "0008_web_projection_checkpoint.sql",
+      "0009_web_inventory_snapshot.sql",
     ]) {
       let sql = readFileSync(resolve("../supabase/migrations", name), "utf8");
       sql = sql.replace("create extension if not exists pgcrypto;", "");

@@ -25,3 +25,7 @@ Use HTTPS and the exact production origin. Before public hosting, verify real Au
 ## Remaining considerations
 
 Supabase Auth supplies password-auth abuse protections; hosting-level rate limits and operational monitoring should be configured before broader release. This single-user experimental preview has no admin API, reset-password UI, account signup UI or clinical claims. Its private cache is a display projection, not an immutable scientific dataset. A user permitted to edit their own raw/cache data can change their own analytics; RLS prevents cross-user access. Any future sharing/export feature needs explicit separate consent and tests.
+
+## Coverage metadata freshness
+
+Migration 0009 stores exact raw-record coverage snapshots keyed by owner and display timezone under RLS. Normal GET reads only the last snapshot, indexed receipt watermark and latest sync run; it never recomputes the broad raw inventory. The authenticated same-origin inventory POST refreshes eligible snapshots after five minutes and retains the last validated snapshot on failure. Sources reports capture time and stale/unavailable status independently from physiological projection completeness. Inventory and projection workers share client single-flight maintenance scheduling with separate retry backoff, hidden-tab pause and request cancellation. These snapshots contain only existing coverage metadata, not raw payload copies, and do not change canonical ingestion or phone queues.

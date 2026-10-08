@@ -69,6 +69,18 @@ export const inventorySchema = z.object({
     .nullable(),
 });
 export type Inventory = z.infer<typeof inventorySchema>;
+export const snapshotMetadataSchema = z
+  .object({
+    as_of: instant.nullable(),
+    stale: z.boolean(),
+    available: z.boolean(),
+    refresh_required: z.boolean(),
+  })
+  .refine((snapshot) => !snapshot.available || snapshot.as_of !== null);
+export type InventorySnapshot = z.infer<typeof snapshotMetadataSchema>;
+export const inventorySnapshotSchema = inventorySchema.extend({
+  snapshot: snapshotMetadataSchema,
+});
 export const dashboardQuery = z.object({
   days: z.coerce
     .number()

@@ -108,3 +108,12 @@ The compact consumer and synthetic provider are now integrated. Latest 32 focuse
 After explicit RESUME from 2359bbf, strict TypeScript, full ESLint and all 108 unit/database tests passed. The full desktop/mobile browser suite passed 32/32 in one run; its servers were stopped before building. Test fixtures use the new compact RPC and verify Auth isolation, navigation retention/logout, read truncation versus projection work, cancellation/backoff, sparse geometry and accessibility. Supabase dry-run lists only migration 0010 pending. Deployment/live acceptance follows production build and source checkpoint; local fixtures do not certify hosting reliability. A DOM response timestamp supports verifying that actual refresh checks observed a new response rather than retained chart geometry.
 
 The resumed production build passed, including TypeScript and compact-serving source. The final response-timestamp attribute passes scoped lint and formatting; it adds no health readings to the DOM.
+
+
+## Resumed deployment — 8 October 2026
+
+Committed source `1795dde` deployed READY to the existing Vercel project as `dpl_3pyEFRdrjEqDemExX2M7p8cFi9DT`; functions remain in `hnd1` (Tokyo). Migration 0010 is applied. Both new functions are security invokers and anonymous execution is denied. The feature branch was clean at upload. Supabase canonical raw storage and Android queues were unchanged.
+
+Hosted anonymous dashboard/projection/inventory requests reject access; hostile/missing mutation Origins reject access. Generic errors, no-store and Vary Cookie remain. New deployed synthetic chart/layout matrix passes 40/40 across five screens, four ranges, desktop/mobile and reduced motion. No invalid chart marks, client errors or horizontal overflow. These are rendering/security checks, not actual database-latency acceptance.
+
+Actual authenticated checks are ongoing. Today 7/28/90/365-day checked responses rendered both chart marks without UI errors; measured work was 5,843 / 7,922 / 12,280 / 15,559 ms respectively. Long ranges can still reach the read budget and return explicit partial results. Train 28-day later completed in 4,542 ms. The latest 15-minute static log scan counted five RPC UNAVAILABLE warnings, with no observed DATA_READ_UNAVAILABLE entry in that scan. Milestone A remains open; first-page failure absence in one scan is not a reliability guarantee. No private values or identifiers were recorded.

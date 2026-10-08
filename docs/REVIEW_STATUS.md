@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `1795dde`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -30,7 +30,7 @@ Partial status now distinguishes projection backlog, unknown projection status, 
 
 The resumed compact-serving source passes **108/108 full unit/database tests**, strict TypeScript, ESLint and a clean **32/32 full desktop/mobile browser run**. Production build also passes. These fixture checks do not establish hosted acceptance. No historical audit/import has started.
 
-A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration and full local regression are verified; deployment and actual hosted acceptance remain pending.** Canonical cursors preserve microsecond precision. Migration 0010 is not applied yet; deploy it before the new consumer. It changes neither canonical raw storage nor analytics formulas.
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration, full local regression and deployment are verified; actual hosted acceptance remains pending.** Canonical cursors preserve microsecond precision. Migration 0010 is now applied; new consumer source `1795dde` is deployed. It changes neither canonical raw storage nor analytics formulas.
 
 ## Validation and deployment
 
@@ -40,8 +40,8 @@ A lossless compact transport is also implemented and tested as additive migratio
 - Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
 - Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
 - Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.
-- Migrations **0005–0009 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
-- Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `84b025e` is deployed.
+- Migrations **0005–0010 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
+- Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `1795dde` is deployed.
 
 ## Production reliability remains under review
 

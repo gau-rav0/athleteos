@@ -339,16 +339,82 @@ test.each(["missing", "duplicate", "increasing", "cycle"])(
   },
 );
 
-test("an initial malformed transport envelope is unavailable", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
+test.each(["cursor", "wire_version"])(
+  "an initial malformed %s envelope is unavailable with a safe category",
+  async (invalidField) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const malformed = {
+      ...compact([fact()], true),
+      ...(invalidField === "cursor"
+        ? { next_id: null }
+        : { wire_version: 999 }),
+      private_payload:
+        "synthetic private details https://private.example/health",
+    };
+    const fake = source({
+      ...defaults(),
+      web_tuple_facts_cursor: [success(malformed)],
+    });
+    await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
+      "DATA_READ_UNAVAILABLE",
+    );
+    expect(warn.mock.calls).toEqual([
+      [
+        "DASHBOARD_RPC_FAILURE",
+        {
+          stage: "page",
+          code: "UNAVAILABLE",
+          elapsedMs: 0,
+          budgetMs: 8000,
+          category: "FACT_ENVELOPE_INVALID",
+        },
+      ],
+    ]);
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(
+      /private|synthetic|https:/,
+    );
+  },
+);
+
+test("a late malformed envelope retains valid records and logs only its category", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.spyOn(performance, "now").mockReturnValue(0);
+  const row = fact();
   const fake = source({
     ...defaults(),
     web_tuple_facts_cursor: [
-      success({ ...compact([fact()], true), next_id: null }),
+      success(compact([row], true)),
+      success({
+        ...compact([row]),
+        wire_version: 999,
+        private_payload:
+          "synthetic private details https://private.example/health",
+      }),
     ],
   });
-  await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
-    "DATA_READ_UNAVAILABLE",
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.partial).toBe(true);
+  expect(result.projectionPending).toBe(false);
+  expect(result.readIncomplete).toBe(true);
+  expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
+  expect(result.days.at(-1)?.steps).toBe(100);
+  expect(result.readiness.score).toBeNull();
+  expect(result.queryCount).toBe(4);
+  expect(warn.mock.calls).toEqual([
+    [
+      "DASHBOARD_RPC_FAILURE",
+      {
+        stage: "page",
+        code: "UNAVAILABLE",
+        elapsedMs: 0,
+        budgetMs: 8000,
+        category: "FACT_ENVELOPE_INVALID",
+      },
+    ],
+  ]);
+  expect(JSON.stringify(warn.mock.calls)).not.toMatch(
+    /private|synthetic|https:/,
   );
 });
 

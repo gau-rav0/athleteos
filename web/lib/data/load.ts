@@ -20,7 +20,7 @@ function rpcFailure(
   timing?: {
     elapsedMs: number;
     budgetMs: number;
-    transportUnavailable: boolean;
+    category?: "SERVER_TRANSPORT_UNAVAILABLE" | "FACT_ENVELOPE_INVALID";
   },
 ) {
   // Static stages/codes and finite performance counters only. An exact known
@@ -42,9 +42,7 @@ function rpcFailure(
     stage,
     code: code && /^[A-Z0-9]{5,12}$/.test(code) ? code : "UNAVAILABLE",
     ...measured,
-    ...(timing?.transportUnavailable
-      ? { category: "SERVER_TRANSPORT_UNAVAILABLE" }
-      : {}),
+    ...(timing?.category ? { category: timing.category } : {}),
   });
 }
 
@@ -165,9 +163,13 @@ export async function loadDashboard(
       rpcFailure("page", page.error?.code, {
         elapsedMs: pageElapsed,
         budgetMs: pageTimeoutMs,
-        transportUnavailable:
-          page.error?.message === "SERVER_TRANSPORT_UNAVAILABLE" ||
-          page.error?.message === "Error: SERVER_TRANSPORT_UNAVAILABLE",
+        category:
+          !page.error && !decoded
+            ? "FACT_ENVELOPE_INVALID"
+            : page.error?.message === "SERVER_TRANSPORT_UNAVAILABLE" ||
+                page.error?.message === "Error: SERVER_TRANSPORT_UNAVAILABLE"
+              ? "SERVER_TRANSPORT_UNAVAILABLE"
+              : undefined,
       });
       // After at least one valid page, retain its partial snapshot. An initial
       // page failure is a true unavailable response, not an empty health day.

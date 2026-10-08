@@ -108,12 +108,12 @@ export function Metric({
   onExplain: () => void;
 }) {
   return (
-    <Card title={label} onExplain={onExplain}>
+    <Card title={label} onExplain={onExplain} className="metric-card">
       <div className="metric-top">
         {icon}
         <span className="metric-kind">{kind}</span>
       </div>
-      <div className="metric-value">
+      <div className="metric-value" aria-live="off">
         {value}
         <span>{unit}</span>
       </div>

@@ -89,13 +89,8 @@ export function Screens({
             {data.readiness.score === null ? (
               <>
                 <div className="readiness-empty">
-                  <span>—</span>
                   <div>
-                    <h3>
-                      Let the data
-                      <br />
-                      earn the score.
-                    </h3>
+                    <h3>Building your recovery baseline</h3>
                     <p>Missing signals stay missing.</p>
                   </div>
                 </div>

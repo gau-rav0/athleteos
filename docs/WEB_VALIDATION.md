@@ -38,3 +38,9 @@ Synthetic preview images are saved outside the repository. No real-data screensh
 Anonymous hosted synthetic checks now pass 40 combinations: all five screens, 7/28/90/365-day ranges, desktop/mobile and reduced motion. Each populated chart is checked for finite, nonempty SVG geometry rather than axes or pre-hydration wrappers. The earlier hosted timeout was not reproduced with this readiness check; it does not establish authenticated backend stability.
 
 A separate sparse-data defect was fixed: hiding dots for longer series could make isolated observations invisible because missing dates correctly prevent connecting lines. Observed line/area dots now remain visible, nonfinite values are excluded, and tooltip dates retain their year. Focused desktop/mobile browser regression passes 2/2. The new production runner uses anonymous synthetic data and saves no sessions, screenshots or recordings.
+
+## Responsive design review
+
+The obsidian/cyan design adds a stronger hero, refined card depth, readable labels, sticky ranges, 44-pixel controls and mobile safe-area navigation. Missing readiness shows “Building your recovery baseline” without a decorative score placeholder. Five screens passed geometry checks at 1440/1024/768/390/360 pixels, plus every screen in empty/partial states at 360 pixels (35 layouts). Actual synthetic screenshots were inspected outside Git. WCAG A/AA automated checks pass on login and all five screens on desktop and mobile.
+
+The functional browser run initially passed 11/12: one mobile error-state test ambiguously selected both the application error and Next's route announcer. Scoping the assertion to main content fixes the test; both viewport regressions pass. Eight additional projection auth/origin/strict-body/backoff/cancellation/no-overlap tests also pass. Production build and hosted acceptance of these resumed changes are recorded separately below when complete.

@@ -124,6 +124,33 @@ test.each([
   },
 );
 
+test.each([Infinity, NaN])(
+  "nonfinite page failure timing is omitted from diagnostics: %s",
+  async (invalidElapsed) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    const fake = source({ ...defaults(), web_tuple_facts_cursor: [failure] });
+    const original = fake.rpc.getMockImplementation()!;
+    fake.rpc.mockImplementation((name, args) => {
+      const response = original(name, args);
+      if (name !== "web_tuple_facts_cursor") return response;
+      return Object.assign(response, {
+        abortSignal: () => {
+          elapsed = invalidElapsed;
+          return response;
+        },
+      });
+    });
+    await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
+      "DATA_READ_UNAVAILABLE",
+    );
+    expect(warn.mock.calls).toEqual([
+      ["DASHBOARD_RPC_FAILURE", { stage: "page", code: "57014" }],
+    ]);
+  },
+);
+
 test("GET serving calls only read RPCs and never does projection work", async () => {
   const fake = source(defaults());
   const result = await loadDashboard(fake.client, 7, "UTC");
@@ -193,12 +220,77 @@ test("inventory failure retains valid charts without misclassifying fact coverag
 });
 
 test("initial fact read failure is unavailable rather than an empty healthy day", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  let elapsed = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => elapsed);
   const fake = source({ ...defaults(), web_tuple_facts_cursor: [failure] });
+  const original = fake.rpc.getMockImplementation()!;
+  fake.rpc.mockImplementation((name, args) => {
+    const response = original(name, args);
+    if (name !== "web_tuple_facts_cursor") return response;
+    return Object.assign(response, {
+      abortSignal: () => {
+        elapsed = 7999.6;
+        return response;
+      },
+    });
+  });
   await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
     "DATA_READ_UNAVAILABLE",
   );
+  expect(warn.mock.calls).toEqual([
+    [
+      "DASHBOARD_RPC_FAILURE",
+      { stage: "page", code: "57014", elapsedMs: 8000, budgetMs: 8000 },
+    ],
+  ]);
+  expect(JSON.stringify(warn.mock.calls)).not.toContain("private payload");
 });
+
+test.each([
+  ["Error: SERVER_TRANSPORT_UNAVAILABLE", true],
+  ["SERVER_TRANSPORT_UNAVAILABLE", true],
+  [
+    "Error: SERVER_TRANSPORT_UNAVAILABLE https://private.example/account",
+    false,
+  ],
+  ["private payload must never be logged", false],
+] as const)(
+  "page failure safely classifies only exact transport marker: %s",
+  async (message, known) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(performance, "now").mockReturnValue(0);
+    const privateFailure = {
+      data: null,
+      error: {
+        code: "private-code/endpoint",
+        message,
+        details: "private details https://private.example/health",
+        hint: "private hint",
+      },
+    };
+    const fake = source({
+      ...defaults(),
+      web_tuple_facts_cursor: [privateFailure],
+    });
+    await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
+      "DATA_READ_UNAVAILABLE",
+    );
+    expect(warn.mock.calls).toEqual([
+      [
+        "DASHBOARD_RPC_FAILURE",
+        {
+          stage: "page",
+          code: "UNAVAILABLE",
+          elapsedMs: 0,
+          budgetMs: 8000,
+          ...(known ? { category: "SERVER_TRANSPORT_UNAVAILABLE" } : {}),
+        },
+      ],
+    ]);
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private|https:/);
+  },
+);
 
 test("a short byte-limited page continues using its explicit canonical cursor", async () => {
   const first = fact();
@@ -351,7 +443,7 @@ test("later fact read failure retains earlier pages as explicitly partial", asyn
 });
 
 test("late fact pages use only the remaining 14s read budget and retain cached charts", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   let elapsed = 0;
   vi.spyOn(performance, "now").mockImplementation(() => elapsed);
   const deadlines = vi.spyOn(AbortSignal, "timeout");
@@ -388,6 +480,13 @@ test("late fact pages use only the remaining 14s read budget and retain cached c
   expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
   expect(result.days.at(-1)?.steps).toBe(100);
   expect(result.readiness.score).toBeNull();
+  expect(warn.mock.calls).toEqual([
+    [
+      "DASHBOARD_RPC_FAILURE",
+      { stage: "page", code: "57014", elapsedMs: 751, budgetMs: 750 },
+    ],
+  ]);
+  expect(JSON.stringify(warn.mock.calls)).not.toContain("private payload");
 });
 
 test("exhausted serving budget starts no additional fact page", async () => {

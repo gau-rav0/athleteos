@@ -14,11 +14,37 @@ import { MIN_ANALYTICS_HISTORY_DAYS } from "@/lib/analytics/history";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
 import { projectionStatusSchema, rpcSignal } from "./projection";
 
-function rpcFailure(stage: string, code?: string) {
-  // Static stages and SQLSTATE only: never log messages, requests or payloads.
+function rpcFailure(
+  stage: "page" | "status" | "inventory",
+  code?: string,
+  timing?: {
+    elapsedMs: number;
+    budgetMs: number;
+    transportUnavailable: boolean;
+  },
+) {
+  // Static stages/codes and finite performance counters only. An exact known
+  // transport marker becomes a static category; exception details never escape.
+  const measured =
+    timing &&
+    Number.isFinite(timing.elapsedMs) &&
+    Number.isFinite(timing.budgetMs)
+      ? {
+          elapsedMs: Math.round(
+            Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, timing.elapsedMs)),
+          ),
+          budgetMs: Math.round(
+            Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, timing.budgetMs)),
+          ),
+        }
+      : {};
   console.warn("DASHBOARD_RPC_FAILURE", {
     stage,
     code: code && /^[A-Z0-9]{5,12}$/.test(code) ? code : "UNAVAILABLE",
+    ...measured,
+    ...(timing?.transportUnavailable
+      ? { category: "SERVER_TRANSPORT_UNAVAILABLE" }
+      : {}),
   });
 }
 
@@ -136,7 +162,13 @@ export async function loadDashboard(
       sqlTimingAvailable = false;
       untimedPages++;
       failedPageMs += pageElapsed;
-      rpcFailure("page", page.error?.code);
+      rpcFailure("page", page.error?.code, {
+        elapsedMs: pageElapsed,
+        budgetMs: pageTimeoutMs,
+        transportUnavailable:
+          page.error?.message === "SERVER_TRANSPORT_UNAVAILABLE" ||
+          page.error?.message === "Error: SERVER_TRANSPORT_UNAVAILABLE",
+      });
       // After at least one valid page, retain its partial snapshot. An initial
       // page failure is a true unavailable response, not an empty health day.
       if (recordsRead === 0) throw new Error("DATA_READ_UNAVAILABLE");

@@ -31,9 +31,19 @@ test("five demo screens, ranges, drilldown, charts and responsive layout", async
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      /hydration|hydrated|server rendered/i.test(message.text())
+    )
+      errors.push("DEMO_HYDRATION_MISMATCH");
+  });
   for (const slug of ["today", "train", "recover", "progress", "insights"]) {
     await page.goto(`/demo/${slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(
+      await page.getByRole("main").getAttribute("data-response-at"),
+    ).toBeNull();
     await expect(
       page.getByText("DEMO · synthetic data", { exact: true }),
     ).toBeVisible();

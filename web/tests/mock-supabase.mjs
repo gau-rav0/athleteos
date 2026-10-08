@@ -112,34 +112,35 @@ createServer(async (req, res) => {
   };
   if (url.pathname === "/rest/v1/rpc/refresh_web_inventory_snapshot")
     return send(200, { refreshed: false, busy: false, snapshot });
-  if (url.pathname === "/rest/v1/rpc/web_compact_facts_cursor")
+  if (url.pathname === "/rest/v1/rpc/web_tuple_facts_cursor")
     return send(200, {
-      wire_version: 1,
+      wire_version: 2,
       has_more: false,
       next_start: null,
       next_id: null,
       records: !input.p_before_id
         ? [
-            {
-              id: user.id,
-              kind: "steps",
-              provider: "health_connect",
-              origin: "live",
-              source: "synthetic.example",
-              channel: "synthetic-watch",
-              rank: 300,
+            // Canonical v2 order from lib/data/compact.ts TUPLE_FACT_FIELDS.
+            [
+              user.id,
+              "steps",
+              "health_connect",
+              "live",
+              "synthetic.example",
+              "synthetic-watch",
+              300,
               start,
               end,
-              received: now,
-              value: user.steps,
-              samples: 1,
-              min: null,
-              max: null,
-              sessions: [],
-              hourly: [],
-              supported: true,
-              bodyFat: null,
-            },
+              now,
+              user.steps,
+              1,
+              null,
+              null,
+              [],
+              [],
+              true,
+              null,
+            ],
           ]
         : [],
     });

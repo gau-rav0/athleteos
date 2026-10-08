@@ -94,7 +94,8 @@ export function Dashboard({
   const data = demo ? synthetic : snapshot?.key === key ? snapshot.data : null;
   useEffect(() => {
     if (demo || logoutBusy) return;
-    const controller = new AbortController();
+    const controller = new AbortController(),
+      initialMaintenanceDue = Date.now() + 2000;
     let active = true,
       inFlight = false,
       workInFlight = false,
@@ -102,8 +103,8 @@ export function Dashboard({
       workDelay = 2000,
       inventoryPending = false,
       inventoryDelay = 2000,
-      projectionDue = Date.now() + 2000,
-      inventoryDue = Date.now() + 2000,
+      projectionDue = initialMaintenanceDue,
+      inventoryDue = initialMaintenanceDue,
       preferInventory = true,
       lastRead = 0;
     let workTimer: ReturnType<typeof setTimeout> | undefined;
@@ -377,7 +378,7 @@ export function Dashboard({
         <main
           id="main"
           className="dashboard-main"
-          data-response-at={data?.fetchedAt}
+          data-response-at={demo ? undefined : data?.fetchedAt}
         >
           <div className="page-heading">
             <div>

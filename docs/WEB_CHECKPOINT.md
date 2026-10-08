@@ -1,3 +1,11 @@
+# Current resumed checkpoint — 8 October 2026
+
+The user explicitly resumed. Continue development; previous pause entries below are historical. Source `0b2f04a` is pushed and deployed (CPU refinement). Migration 0010 is applied. Current tuple v2 integration (0011) passes 126 unit/database tests, TypeScript, lint and production build; browser evidence is 31/32 full plus 18/18 relevant passes after fixture/scheduling fixes. It is not deployed yet. Apply reviewed 0011, deploy a clean committed snapshot, then repeat authenticated live acceptance before product/historical gates. Build workers are capped at one.
+
+Actual preceding live matrix: 20 distinct responses, every expected chart rendered, zero UI alerts. Half were complete; yearly reads/projections remain partial and latency remains variable. Gate A is still open. The private ZIP is unopened. Preserve Android queues, original checkout and the feature worktree. First historical production upload and main merge still require explicit approval.
+
+---
+
 # RESUMED explicitly by the user — 8 October 2026
 
 Continue from pushed pause checkpoint `2359bbf1b16c9751b2cc4e765908d4878a3490d8`. The user's explicit RESUME supersedes the pause instructions below; preserve them as history. The feature tree was clean at resume. First finish full compact-serving regression, then reviewed migration 0010 and deployment to the existing projects, followed by actual live acceptance. Historical preparation/product features remain gated in the order below; first historical production upload and main merge still require approval.

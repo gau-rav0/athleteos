@@ -88,12 +88,12 @@ export async function loadDashboard(
     );
     queries++;
     const page: PostgrestSingleResponse<unknown> = await client
-      .rpc("web_compact_facts_cursor", {
+      .rpc("web_tuple_facts_cursor", {
         p_from: from,
         p_until: until,
         p_before_start: beforeStart,
         p_before_id: beforeId,
-        p_limit: Math.min(4000, 100000 - recordsRead),
+        p_limit: Math.min(8000, 100000 - recordsRead),
       })
       .abortSignal(rpcSignal(pageTimeoutMs, signal));
     pageMs += performance.now() - pageStarted;
@@ -116,7 +116,7 @@ export async function loadDashboard(
           )
         )
           decoded = undefined;
-        if (decoded && decoded.records > Math.min(4000, 100000 - recordsRead))
+        if (decoded && decoded.records > Math.min(8000, 100000 - recordsRead))
           decoded = undefined;
       } catch {
         // Malformed envelopes fail closed, with no payload in diagnostics.

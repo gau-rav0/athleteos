@@ -2,6 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 vi.mock("server-only", () => ({}));
 import { loadDashboard } from "@/lib/data/load";
+import { TUPLE_FACT_FIELDS } from "@/lib/data/compact";
 import { advanceProjection } from "@/lib/data/projection";
 import { refreshInventory } from "@/lib/data/inventory";
 import type { Fact } from "@/lib/data/schema";
@@ -19,8 +20,15 @@ const compact = (
   hasMore = false,
   cursor?: { start: string; id: string },
 ) => ({
-  wire_version: 1,
-  records,
+  wire_version: 2,
+  records: records.map((record) =>
+    record &&
+    typeof record === "object" &&
+    !Array.isArray(record) &&
+    !("transport_invalid" in record)
+      ? TUPLE_FACT_FIELDS.map((key) => (record as Record<string, unknown>)[key])
+      : record,
+  ),
   has_more: hasMore,
   next_start: hasMore
     ? (cursor?.start ?? (records.at(-1) as Fact)?.start)
@@ -105,7 +113,7 @@ test.each([
     ).toMatchObject(expected);
     expect(
       fake.rpc.mock.calls.find(
-        ([name]) => name === "web_compact_facts_cursor",
+        ([name]) => name === "web_tuple_facts_cursor",
       )?.[1],
     ).toMatchObject(expected);
     expect(
@@ -122,7 +130,7 @@ test("GET serving calls only read RPCs and never does projection work", async ()
   expect(fake.rpc.mock.calls.map(([name]) => name)).toEqual([
     "web_projection_status",
     "read_web_inventory_snapshot",
-    "web_compact_facts_cursor",
+    "web_tuple_facts_cursor",
   ]);
   expect(result.partial).toBe(false);
   expect(result.queryCount).toBe(3);
@@ -148,7 +156,7 @@ test("status timeouts keep validated cached data partial and redact errors", asy
   const fake = source({
     ...defaults(),
     web_projection_status: [failure],
-    web_compact_facts_cursor: [success([fact()])],
+    web_tuple_facts_cursor: [success([fact()])],
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
@@ -165,7 +173,7 @@ test("inventory failure retains valid charts without misclassifying fact coverag
   const fake = source({
     ...defaults(),
     read_web_inventory_snapshot: [failure],
-    web_compact_facts_cursor: [success([fact()])],
+    web_tuple_facts_cursor: [success([fact()])],
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(false);
@@ -176,7 +184,7 @@ test("inventory failure retains valid charts without misclassifying fact coverag
 
 test("initial fact read failure is unavailable rather than an empty healthy day", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  const fake = source({ ...defaults(), web_compact_facts_cursor: [failure] });
+  const fake = source({ ...defaults(), web_tuple_facts_cursor: [failure] });
   await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
     "DATA_READ_UNAVAILABLE",
   );
@@ -187,7 +195,7 @@ test("a short byte-limited page continues using its explicit canonical cursor", 
   const second = { ...first, id: "00000000-0000-4000-8000-000000000009" };
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success(compact([first], true, first)),
       success(compact([second])),
     ],
@@ -198,7 +206,7 @@ test("a short byte-limited page continues using its explicit canonical cursor", 
   expect(fake.rpc.mock.calls.at(-1)?.[1]).toMatchObject({
     p_before_start: first.start,
     p_before_id: first.id,
-    p_limit: 4000,
+    p_limit: 8000,
   });
 });
 
@@ -219,7 +227,7 @@ test.each(["missing", "duplicate", "increasing", "cycle"])(
     const pages = [success(compact([first], true, first))];
     if (mode === "cycle") pages.push(success(compact([lower], true, lower)));
     pages.push(success(bad));
-    const fake = source({ ...defaults(), web_compact_facts_cursor: pages });
+    const fake = source({ ...defaults(), web_tuple_facts_cursor: pages });
     const result = await loadDashboard(fake.client, 7, "UTC");
     expect(result.partialReasons).toEqual(["READ_INCOMPLETE"]);
     expect(result.readIncomplete).toBe(true);
@@ -233,7 +241,7 @@ test("an initial malformed transport envelope is unavailable", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success({ ...compact([fact()], true), next_id: null }),
     ],
   });
@@ -268,7 +276,7 @@ test.each([
     const fixture = fact();
     const fake = source({
       ...defaults(),
-      web_compact_facts_cursor: [
+      web_tuple_facts_cursor: [
         success(compact([fixture], true, { start: prior, id: fixture.id })),
         success(
           compact([{ transport_invalid: true }], true, { start: next, id }),
@@ -279,9 +287,7 @@ test.each([
     const result = await loadDashboard(fake.client, 7, "UTC");
     expect(result.readIncomplete).toBe(incomplete);
     expect(
-      fake.rpc.mock.calls.filter(
-        ([name]) => name === "web_compact_facts_cursor",
-      ),
+      fake.rpc.mock.calls.filter(([name]) => name === "web_tuple_facts_cursor"),
     ).toHaveLength(incomplete ? 2 : 3);
     expect(result.days.at(-1)?.steps).toBe(100);
   },
@@ -289,10 +295,12 @@ test.each([
 
 test("invalid records count towards the 100k serving budget", async () => {
   const fixture = fact();
-  const pages = Array.from({ length: 25 }, (_, index) =>
+  const pages = Array.from({ length: 13 }, (_, index) =>
     success(
       compact(
-        Array.from({ length: 4000 }, () => ({ transport_invalid: true })),
+        Array.from({ length: index === 12 ? 4000 : 8000 }, () => ({
+          transport_invalid: true,
+        })),
         true,
         {
           start: fixture.start,
@@ -301,7 +309,7 @@ test("invalid records count towards the 100k serving budget", async () => {
       ),
     ),
   );
-  const fake = source({ ...defaults(), web_compact_facts_cursor: pages });
+  const fake = source({ ...defaults(), web_tuple_facts_cursor: pages });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.invalidFacts).toBe(100000);
   expect(result.partialReasons).toEqual([
@@ -309,8 +317,9 @@ test("invalid records count towards the 100k serving budget", async () => {
     "INVALID_SUMMARIES",
   ]);
   expect(
-    fake.rpc.mock.calls.filter(([name]) => name === "web_compact_facts_cursor"),
-  ).toHaveLength(25);
+    fake.rpc.mock.calls.filter(([name]) => name === "web_tuple_facts_cursor"),
+  ).toHaveLength(13);
+  expect(fake.rpc.mock.calls.at(-1)?.[1]).toMatchObject({ p_limit: 4000 });
 });
 
 test("later fact read failure retains earlier pages as explicitly partial", async () => {
@@ -321,7 +330,7 @@ test("later fact read failure retains earlier pages as explicitly partial", asyn
   }));
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [success(first), failure],
+    web_tuple_facts_cursor: [success(first), failure],
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
@@ -339,7 +348,7 @@ test("late fact pages use only the remaining 14s read budget and retain cached c
   const fixture = fact();
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success(Array.from({ length: 2000 }, () => fixture)),
       failure,
     ],
@@ -348,7 +357,7 @@ test("late fact pages use only the remaining 14s read budget and retain cached c
   let pages = 0;
   fake.rpc.mockImplementation((name, args) => {
     const response = original(name, args);
-    if (name !== "web_compact_facts_cursor") return response;
+    if (name !== "web_tuple_facts_cursor") return response;
     return Object.assign(response, {
       abortSignal: () => {
         // Simulate first-page work including transport/validation overhead,
@@ -377,14 +386,14 @@ test("exhausted serving budget starts no additional fact page", async () => {
   const fixture = fact();
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success(Array.from({ length: 2000 }, () => fixture)),
     ],
   });
   const original = fake.rpc.getMockImplementation()!;
   fake.rpc.mockImplementation((name, args) => {
     const response = original(name, args);
-    if (name !== "web_compact_facts_cursor") return response;
+    if (name !== "web_tuple_facts_cursor") return response;
     return Object.assign(response, {
       abortSignal: () => {
         elapsed = 14000;
@@ -394,7 +403,7 @@ test("exhausted serving budget starts no additional fact page", async () => {
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(
-    fake.rpc.mock.calls.filter(([name]) => name === "web_compact_facts_cursor"),
+    fake.rpc.mock.calls.filter(([name]) => name === "web_tuple_facts_cursor"),
   ).toHaveLength(1);
   expect(result.partial).toBe(true);
   expect(result.projectionPending).toBe(false);
@@ -407,7 +416,7 @@ test("known projection backlog is distinct from incomplete read serving", async 
   const fake = source({
     ...defaults(),
     web_projection_status: [success({ remaining: true })],
-    web_compact_facts_cursor: [success([fact()])],
+    web_tuple_facts_cursor: [success([fact()])],
   });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
@@ -420,7 +429,7 @@ test("known projection backlog is distinct from incomplete read serving", async 
 test("invalid summaries withhold analytics without inventing a projection backlog", async () => {
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success([fact(), { ...fact(), value: "synthetic-invalid" }]),
     ],
   });
@@ -454,21 +463,21 @@ test("aborted requests stop future pages and never start projection work", async
   const controller = new AbortController();
   const fake = source({
     ...defaults(),
-    web_compact_facts_cursor: [
+    web_tuple_facts_cursor: [
       success(Array.from({ length: 2000 }, () => fact())),
     ],
   });
   const original = fake.rpc.getMockImplementation()!;
   fake.rpc.mockImplementation((name: string) => {
     const response = original(name);
-    if (name === "web_compact_facts_cursor") controller.abort();
+    if (name === "web_tuple_facts_cursor") controller.abort();
     return response;
   });
   await expect(
     loadDashboard(fake.client, 7, "UTC", controller.signal),
   ).rejects.toThrow();
   expect(
-    fake.rpc.mock.calls.filter(([name]) => name === "web_compact_facts_cursor"),
+    fake.rpc.mock.calls.filter(([name]) => name === "web_tuple_facts_cursor"),
   ).toHaveLength(1);
   const abortedWorker = source({});
   await expect(

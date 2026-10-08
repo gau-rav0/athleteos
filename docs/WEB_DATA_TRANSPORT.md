@@ -26,3 +26,24 @@ continuation. Raw records remain intact for diagnosis and later correction.
 Transport data remains server-only. Browser responses continue to contain bounded
 daily aggregates rather than raw payloads or canonical record/device identifiers.
 This format is unrelated to historical ingestion, Android uploads, or a new model.
+
+Wire version **2**, served by the separate `web_tuple_facts_cursor` RPC, allows
+up to 8,000 records within the same 2 MiB byte budget. Each valid record is an
+array of exactly 18 positions in this order:
+
+`id, kind, provider, origin, source, channel, rank, start, end, received, value,
+samples, min, max, sessions, hourly, supported, bodyFat`.
+
+Every value, including nulls, empty arrays, zeros and false, is retained. The
+decoder restores field names by position without inventing defaults and applies
+the unchanged Fact schema. Wrong-length or malformed tuples are quarantined;
+missing original fields produce the same `transport_invalid` marker. Ordinary
+objects in v2 records reject the envelope, preventing ambiguous mixed formats.
+The decoder continues to accept v1, with its original 4,000-record limit.
+
+Both versions retain exact PostgreSQL microsecond cursor comparisons, canonical
+owner keysets, revision/deletion checks and explicit continuation. A short tuple
+page does not imply completion. Oversized first records still fail explicitly.
+Byte accounting includes PostgreSQL UTF8/escaped JSON and array separators, with
+reserved envelope overhead. This removes repeated field names on the wire; it
+does not change summaries, provider selection, source coverage or database data.

@@ -89,7 +89,7 @@ test("explicit zero, false and nested measurements are preserved exactly", () =>
 });
 test("unknown versions, missing continuation and oversized row counts fail closed", () => {
   expect(() =>
-    decodeCompactPage({ ...envelope([]), wire_version: 2 }),
+    decodeCompactPage({ ...envelope([]), wire_version: 3 }),
   ).toThrow();
   expect(() =>
     decodeCompactPage({ ...envelope([record]), has_more: true }),

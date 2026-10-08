@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
+  // Bound build page workers on the local 8 GB development machine.
+  experimental: { cpus: 1 },
   // Keep the development badge clear of fixed mobile navigation. Next still
   // surfaces compile/runtime errors; production behavior is unchanged.
   devIndicators: false,

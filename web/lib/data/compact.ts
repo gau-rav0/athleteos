@@ -1,5 +1,25 @@
 import { z } from "zod";
 import { factSchema, type Fact } from "./schema";
+export const TUPLE_FACT_FIELDS = [
+  "id",
+  "kind",
+  "provider",
+  "origin",
+  "source",
+  "channel",
+  "rank",
+  "start",
+  "end",
+  "received",
+  "value",
+  "samples",
+  "min",
+  "max",
+  "sessions",
+  "hourly",
+  "supported",
+  "bodyFat",
+] as const;
 // PostgreSQL keysets retain microseconds; Date.parse alone truncates them and
 // can incorrectly compare distinct records as equal millisecond timestamps.
 export function cursorEpochMicroseconds(value: string): bigint | null {
@@ -20,12 +40,16 @@ const cursorInstant = z
   .refine((value) => cursorEpochMicroseconds(value) !== null, "INVALID_CURSOR");
 const envelopeSchema = z
   .object({
-    wire_version: z.literal(1),
-    records: z.array(z.unknown()).max(4000),
+    wire_version: z.union([z.literal(1), z.literal(2)]),
+    records: z.array(z.unknown()).max(8000),
     has_more: z.boolean(),
     next_start: cursorInstant.nullable(),
     next_id: z.uuid().nullable(),
   })
+  .refine(
+    (page) => page.wire_version !== 1 || page.records.length <= 4000,
+    "INVALID_ROW_LIMIT",
+  )
   .refine(
     (page) =>
       page.has_more
@@ -51,6 +75,33 @@ export function decodeCompactPage(input: unknown): CompactPage {
   const facts: Fact[] = [];
   let invalid = 0;
   for (const record of page.records) {
+    if (page.wire_version === 2) {
+      if (record && typeof record === "object" && !Array.isArray(record)) {
+        if (
+          "transport_invalid" in record &&
+          record.transport_invalid === true
+        ) {
+          invalid++;
+          continue;
+        }
+        throw new Error("INVALID_TUPLE_RECORD");
+      }
+      if (
+        !Array.isArray(record) ||
+        record.length !== TUPLE_FACT_FIELDS.length
+      ) {
+        invalid++;
+        continue;
+      }
+      const parsed = factSchema.safeParse(
+        Object.fromEntries(
+          TUPLE_FACT_FIELDS.map((key, index) => [key, record[index]]),
+        ),
+      );
+      if (parsed.success) facts.push(parsed.data);
+      else invalid++;
+      continue;
+    }
     if (
       !record ||
       typeof record !== "object" ||

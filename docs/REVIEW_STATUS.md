@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `6164378`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `232e819`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -36,6 +36,8 @@ Tuple migration 0011 is applied: versioned 18-field lossless transport raises th
 
 Migration 0013 (source `536ce67`) is applied and streams only accepted tuple prefixes plus lookahead. It preserves the wire contract and reduces redundant byte-limited encoding; synthetic equivalence tests pass. Yearly production reads remain partial despite this improvement. Optional SQL/decoder timing instrumentation passes 163 unit/database tests, TypeScript, lint and build; the clean full 32-case browser run plus 4/4 targeted timing-caption cases pass; consumer 6164378 is deployed READY with security checks 7/7, to locate remaining overhead before changing serving behavior.
 
+Latest diagnostic refinement `232e819` preserves total SQL as unknown after failed/untimed pages while reporting a clearly qualified measured subset and separate successful/failed RPC durations. Relevant consumer tests pass 38/38, TypeScript/full lint/production build pass, and targeted desktop/mobile timing cases pass 6/6. Together with the preceding full 32-case run, 38 distinct browser cases have passing evidence across two runs. A latest yearly response still reports incomplete reads and pending projections despite known timing for every attempted page. No reliability completion or full-history claim is made.
+
 ## Validation and deployment
 
 - Latest full unit/database suite: **163/163 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
@@ -44,8 +46,8 @@ Migration 0013 (source `536ce67`) is applied and streams only accepted tuple pre
 - Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
 - Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
 - Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.
-- Migrations **0005–0010 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
-- Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `1795dde` is deployed.
+- Migrations **0005–0014 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
+- Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `232e819` is deployed READY in hnd1 as `dpl_3pN8tNJSGfcgbwCNSLEHUgPYtDLr`.
 
 ## Production reliability remains under review
 

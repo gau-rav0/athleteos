@@ -1,6 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { boundedServerFetch } from "./transport";
 
 export async function supabaseServer() {
   const jar = await cookies();
@@ -9,7 +10,7 @@ export async function supabaseServer() {
   if (!url || !key) throw new Error("SERVER_CONFIGURATION_REQUIRED");
   return createServerClient(url, key, {
     global: {
-      fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      fetch: boundedServerFetch,
     },
     cookieOptions: {
       httpOnly: true,

@@ -1,4 +1,5 @@
 import { beforeEach, expect, test, vi } from "vitest";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -111,4 +112,15 @@ test("worker failure is generic and does not expose database messages", async ()
   });
   expect(JSON.stringify(warn.mock.calls)).not.toContain("private database");
   warn.mockRestore();
+});
+
+test("temporary Auth transport errors return 503 rather than clearing the session", async () => {
+  mocks.auth.mockResolvedValue({
+    data: { user: null },
+    error: new AuthRetryableFetchError("synthetic private failure", 0),
+  });
+  const response = await POST(request());
+  expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ error: "AUTH_SERVICE_UNAVAILABLE" });
+  expect(mocks.worker).not.toHaveBeenCalled();
 });

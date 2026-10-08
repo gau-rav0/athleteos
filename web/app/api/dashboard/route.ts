@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabase/server";
 import { dashboardQuery } from "@/lib/data/schema";
 import { loadDashboard } from "@/lib/data/load";
@@ -9,6 +10,11 @@ export async function GET(request: Request) {
   try {
     const client = await supabaseServer(),
       { data, error } = await client.auth.getUser();
+    if (isAuthRetryableFetchError(error))
+      return NextResponse.json(
+        { error: "AUTH_SERVICE_UNAVAILABLE" },
+        { status: 503, headers: privateHeaders },
+      );
     if (error || !data.user)
       return NextResponse.json(
         { error: "AUTH_REQUIRED" },

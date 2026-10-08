@@ -104,8 +104,8 @@ begin
     if r.provider='health_connect' then
       items:=case when jsonb_typeof(f->'samples')='array' then f->'samples' else '[]'::jsonb end;
       select avg(bpm),count(*),min(bpm),max(bpm) into value,n,lo,hi from (
-        select public.web_number(x->'beats_per_minute') bpm from jsonb_array_elements(items) x
-      ) v where bpm>0 and bpm<1000;
+        select public.web_number(x->'beats_per_minute') bpm,public.web_instant(x->>'time') t from jsonb_array_elements(items) x
+      ) v where t>=r.start_time and t<=coalesce(r.end_time,r.start_time) and bpm>0 and bpm<1000;
       select coalesce(jsonb_agg(jsonb_build_object('start',bucket_hour,'end',bucket_hour+interval '1 hour','mean',mean,'count',samples) order by bucket_hour),'[]') into buckets from (
         select date_trunc('hour',t,'UTC') bucket_hour,avg(bpm) mean,count(*) samples from (
           select public.web_instant(x->>'time') t,public.web_number(x->'beats_per_minute') bpm from jsonb_array_elements(items) x

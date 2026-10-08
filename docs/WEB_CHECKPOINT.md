@@ -1,6 +1,14 @@
 # Paused dashboard checkpoint — 2026-10-08
 
-**Development is paused at the user's request. Resume only on an explicit RESUME instruction. Do not execute queued follow-ups, historical import, phone operations or ingestion acceptance work.**
+The user explicitly resumed dashboard development on 2026-10-08. The original pause notes below are preserved as history. Historical import, phone operations and ingestion acceptance work remain outside this dashboard task.
+
+## Resumed validation
+
+The scrollable-table accessibility defect is fixed. All 32 unit/database tests and all 10 desktop/mobile browser tests pass; TypeScript, lint and production build pass. The mobile logout navigation race in the test was fixed by waiting for the login document to settle. Sources, reusable UI primitives and the screen rendering have been separated into components.
+
+Migration 0005 is deployed to the existing project. Deployed RLS is enabled with three ownership policies, all dashboard RPCs are invokers, and anonymous RPC execution is denied. The user privately signed in to the local production preview on port 3100. Live supported metrics render; RMSSD/readiness and respiratory-rate absence remain explicit. Initial projection processing remains partial and visibly qualified.
+
+The user authorized Vercel CLI hosting access. A Hobby-tier project is configured, with server environment values stored outside Git and explicit deployment upload exclusions. Hosting verification and final delivery are in progress; see WEB_VALIDATION.md for the latest results. No historical import or phone-queue changes occurred.
 
 Branch: `feat/athleteos-web-dashboard-v1`. PR: https://github.com/gau-rav0/athleteos/pull/2 (draft). First pushed milestone: `4f0b8c023697356b93a9b60b2327431a6a3498be`. This checkpoint is saved in the subsequent checkpoint commit; use `git rev-parse HEAD` for its exact SHA.
 

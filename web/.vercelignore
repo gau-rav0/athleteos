@@ -1,0 +1,17 @@
+.env
+.env.*
+.vercel/
+.next/
+node_modules/
+test-results/
+playwright-report/
+coverage/
+tests/
+*.tsbuildinfo
+*.log
+*.zip
+*.csv
+*.jsonl
+*.aar
+*.apk
+AGENTS.md

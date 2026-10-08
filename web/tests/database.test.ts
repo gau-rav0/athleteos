@@ -149,6 +149,82 @@ describe("authenticated SQL projections", () => {
     expect(rows.rows[0].fact.hourly.length).toBeLessThan(7);
     expect(JSON.stringify(rows.rows[0].fact).length).toBeLessThan(3000);
   });
+  it("maps Samsung kg, vendor duration and enum sleep stages", async () => {
+    await db.exec("reset role");
+    for (const [kind, fields] of [
+      ["body_composition", { weight: 80, body_fat: 18 }],
+      [
+        "sleep",
+        {
+          sessions: [
+            {
+              startTime: "2025-01-13T23:00:00Z",
+              endTime: "2025-01-14T07:00:00Z",
+              duration: "PT7H30M",
+              stages: [
+                {
+                  startTime: "2025-01-13T23:00:00Z",
+                  endTime: "2025-01-14T00:00:00Z",
+                  stage: "DEEP",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      [
+        "exercise",
+        {
+          sessions: [
+            {
+              startTime: "2025-01-14T10:00:00Z",
+              endTime: "2025-01-14T11:00:00Z",
+              duration: "PT50M",
+              exerciseType: "RUNNING",
+            },
+          ],
+        },
+      ],
+    ] as const) {
+      await db.query(
+        "insert into public.raw_health_records(user_id,provider,record_type,source_uid,start_time,end_time,payload) values($1,'samsung_health',$2,$3,'2025-01-14T00:00Z','2025-01-14T12:00Z',$4)",
+        [
+          owner,
+          kind,
+          "synthetic-sdk-" + kind,
+          JSON.stringify({ sdk_version: "1.1.0", fields }),
+        ],
+      );
+    }
+    await user(owner);
+    await refresh();
+    const { rows } = await db.query<{
+      fact: {
+        kind: string;
+        value: number;
+        bodyFat: number;
+        sessions: {
+          minutes: number;
+          stages: { deep: number };
+          category: string;
+          durationBasis: string;
+        }[];
+      };
+    }>(
+      "select fact from public.web_health_facts where fact->>'kind' in ('body_composition','sleep','exercise')",
+    );
+    const body = rows.find((r) => r.fact.kind === "body_composition")!.fact;
+    expect(body.value).toBe(80);
+    expect(body.bodyFat).toBe(18);
+    const sleep = rows.find((r) => r.fact.kind === "sleep")!.fact.sessions[0];
+    expect(sleep.minutes).toBe(450);
+    expect(sleep.stages.deep).toBe(60);
+    expect(sleep.durationBasis).toBe("vendor_duration");
+    const exercise = rows.find((r) => r.fact.kind === "exercise")!.fact
+      .sessions[0];
+    expect(exercise.minutes).toBe(50);
+    expect(exercise.category).toBe("RUNNING");
+  });
   it("uses indexed bounded windows with 200,000 synthetic raw records", async () => {
     await db.exec("reset role");
     await db.query(

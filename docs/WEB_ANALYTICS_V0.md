@@ -23,6 +23,9 @@ Source selection is display analytics only. Raw records stay independently prese
 | Daily weight/body fat | Latest actual measurement in the selected channel/local date; no interpolation. |
 | Smoothed weight | Median of actual daily measurements in trailing 7 days; at least 3 measured days. |
 | Weekly weight change | Latest 7-day median minus preceding 7-day median; at least 2 measured days in each week. Percentage = difference / prior median × 100. Show sample count. |
+| 30-day weight change | Median of latest 7 days minus median of the earliest 7 days in the trailing 30-day window; at least 2 measured days in each edge week. No interpolation or claim of a precise daily rate. |
+| Skin temperature deviation | Current temperature minus preceding 28-day median from the same provider/package/device channel; at least 14 valid measured days. Source changes do not borrow another device baseline. No medical anomaly diagnosis. |
+| Logged cardio minutes | Sum of selected sessions explicitly labeled running, walking, cycling or hiking. Unknown categories and HR spikes are excluded; missing dates remain null. Describes logged time, not strain or proven performance improvement. |
 | Training volume | Sum of selected logged session minutes. Recent 7-day total versus preceding 28-day total / 4; ratio requires a positive baseline. Unobserved sessions are not proven rest days. |
 | Workout frequency | Count of selected, non-overlapping source sessions in the displayed window. |
 | Sleep baseline | Median and MAD of observed durations in the previous 28 days; display sample count. Not a measured sleep requirement. |

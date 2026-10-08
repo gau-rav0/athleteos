@@ -62,7 +62,9 @@ export function TrendChart({
         axisLine={false}
         width={40}
         domain={
-          metric === "weight" || metric === "weightSmooth"
+          metric === "weight" ||
+          metric === "weightSmooth" ||
+          metric === "skinDeviation"
             ? ["auto", "auto"]
             : [0, "auto"]
         }
@@ -150,7 +152,12 @@ export function TrendChart({
         {table ? "Hide" : "View"} accessible data table
       </button>
       {table && (
-        <div className="table-scroll">
+        <div
+          className="table-scroll"
+          role="region"
+          aria-label="Scrollable data table"
+          tabIndex={0}
+        >
           <table>
             <caption>
               {label} observations ({unit})

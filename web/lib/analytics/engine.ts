@@ -28,6 +28,8 @@ export type Day = {
   hrv: number | null;
   energy: number | null;
   skin: number | null;
+  skinDeviation: number | null;
+  cardioMinutes: number | null;
   spo2: number | null;
   respiratory: number | null;
   trainingMinutes: number | null;
@@ -76,6 +78,7 @@ export type Dataset = {
   sleepBaseline: ReturnType<typeof robustBaseline>;
   sleepRegularity: number | null;
   weightChange: { kg: number; percent: number; samples: number } | null;
+  weightThirtyChange: { kg: number; samples: number } | null;
   volume: {
     seven: number | null;
     baseline: number | null;
@@ -99,6 +102,8 @@ const emptyDay = (day: string): Day => ({
   hrv: null,
   energy: null,
   skin: null,
+  skinDeviation: null,
+  cardioMinutes: null,
   spo2: null,
   respiratory: null,
   trainingMinutes: null,
@@ -254,6 +259,7 @@ export function buildDataset(
   }
   const groups = new Map<string, Map<string, Observation[]>>(),
     identities = new Set<string>();
+  const selectedChannels = new Map<string, string>();
   let excludedOverlaps = 0;
   const add = (day: string, m: Metric, observation: Observation) => {
     if (!calendar.has(day)) return;
@@ -352,6 +358,7 @@ export function buildDataset(
     }
     if (!selected) continue;
     const representative = selected.at(-1)!;
+    selectedChannels.set(key, representative.fact.channel);
     row[m] =
       m === "steps" || m === "distance"
         ? selected.reduce((sum, o) => sum + o.value, 0)
@@ -421,6 +428,21 @@ export function buildDataset(
         row.sources.trainingMinutes = kept[0].source;
         row.sampleCounts.trainingMinutes = kept.length;
         canonicalSessions.push(...kept);
+        const cardio = kept.filter((s) =>
+          [
+            "RUNNING",
+            "WALKING",
+            "CYCLING",
+            "HIKING",
+            "RUNNING_TREADMILL",
+            "56",
+            "79",
+            "8",
+            "37",
+          ].includes(s.category),
+        );
+        if (cardio.length)
+          row.cardioMinutes = cardio.reduce((sum, s) => sum + s.minutes, 0);
       }
       if (kind === "sleep") {
         const hourly = new Map<
@@ -461,6 +483,21 @@ export function buildDataset(
     }
   const full = [...calendar.values()];
   for (let i = 0; i < full.length; i++) {
+    const day = full[i];
+    const previousSkin = full
+      .slice(Math.max(0, i - 28), i)
+      .filter(
+        (d) =>
+          d.skin !== null &&
+          selectedChannels.get(`${d.day}:skin`) ===
+            selectedChannels.get(`${day.day}:skin`),
+      )
+      .map((d) => d.skin!);
+    const center = median(previousSkin);
+    if (day.skin !== null && center !== null && previousSkin.length >= 14)
+      day.skinDeviation = day.skin - center;
+  }
+  for (let i = 0; i < full.length; i++) {
     const measured = full
       .slice(Math.max(0, i - 6), i + 1)
       .map((d) => d.weight)
@@ -486,6 +523,21 @@ export function buildDataset(
           kg: currentMedian - previousMedian,
           percent: ((currentMedian - previousMedian) / previousMedian) * 100,
           samples: recent.length + previous.length,
+        }
+      : null;
+  const earlyThirty = full
+    .slice(-30, -23)
+    .map((d) => d.weight)
+    .filter((v): v is number => v !== null);
+  const earlyMedian = median(earlyThirty);
+  const weightThirtyChange =
+    recent.length >= 2 &&
+    earlyThirty.length >= 2 &&
+    currentMedian !== null &&
+    earlyMedian !== null
+      ? {
+          kg: currentMedian - earlyMedian,
+          samples: recent.length + earlyThirty.length,
         }
       : null;
   const minuteSum = (rows: Day[]) =>
@@ -539,6 +591,7 @@ export function buildDataset(
     ),
     sleepRegularity: regularity,
     weightChange,
+    weightThirtyChange,
     volume,
     insight: options.partial ? null : association(pairs, options.days),
     fetchedAt: now.toISOString(),

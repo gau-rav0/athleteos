@@ -135,6 +135,28 @@ describe("canonical observations", () => {
   });
 });
 describe("time and uncertainty", () => {
+  it("requires stable source-channel history for skin deviations", () => {
+    const history = Array.from({ length: 20 }, (_, i) =>
+      fact({
+        id: `synthetic-skin-${i}`,
+        kind: "skin_temperature",
+        value: i === 19 ? 34 : 33,
+        start: new Date(now.getTime() - (19 - i) * 86400000).toISOString(),
+        end: null,
+      }),
+    );
+    expect(run(history).days.at(-1)?.skinDeviation).toBe(1);
+    history.at(-1)!.channel = "synthetic-new-device";
+    expect(run(history).days.at(-1)?.skinDeviation).toBeNull();
+  });
+  it("computes 30-day changes without manufacturing sparse endpoints", () => {
+    expect(
+      demoDataset(90, "UTC", "normal", now).weightThirtyChange?.samples,
+    ).toBeGreaterThanOrEqual(4);
+    expect(
+      run([fact({ kind: "weight", value: 75 })]).weightThirtyChange,
+    ).toBeNull();
+  });
   it("uses explicit offsets and display timezone across midnight", () => {
     expect(localDay("2025-05-09T23:00:00-04:00", "Asia/Kolkata")).toBe(
       "2025-05-10",

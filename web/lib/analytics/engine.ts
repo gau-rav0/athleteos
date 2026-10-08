@@ -6,6 +6,7 @@ import type {
 } from "@/lib/data/schema";
 import { addDays, clockMinutes, localDay, splitInterval } from "./time";
 import { association, deviation, median, robustBaseline } from "./statistics";
+import { MIN_ANALYTICS_HISTORY_DAYS } from "./history";
 export const ANALYTICS_VERSION = "athleteos-analytics-v0.1";
 export type Metric =
   | "steps"
@@ -264,7 +265,7 @@ export function buildDataset(
 ): Dataset {
   const now = options.now || new Date(),
     today = localDay(now, options.timezone),
-    historyDays = Math.max(options.days, 90),
+    historyDays = Math.max(options.days, MIN_ANALYTICS_HISTORY_DAYS),
     first = addDays(today, 1 - historyDays);
   const calendar = new Map<string, Day>();
   for (let i = 0; i < historyDays; i++) {

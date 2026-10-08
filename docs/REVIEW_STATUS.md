@@ -18,6 +18,7 @@ The user has authorized continued web-platform work, specialist agents, reviewed
 - Normal GET serves compact validated projections without extracting raw payloads. Separate bounded POST workers advance durable checkpoints; revision/deletion checks, conservative source selection and backoff remain intact.
 - Five-minute owner/timezone coverage snapshots retain exact raw counts as of a reported capture time. Normal reads avoid broad raw inventory aggregation; stale/unavailable metadata is separate from physiological projection completeness.
 - Auth transport deadlines, request cancellation, preservation of cookie refresh batches, generic private errors and retryable Auth-outage handling.
+- Short ranges acquire 61 calendar days instead of 90, retaining the full calculation context; selected 90/365-day ranges are unchanged. The refinement passes 36 focused tests, TypeScript, targeted lint and production build; live after-change acceptance is pending.
 - Single Tokyo function region colocated with the existing Tokyo database; no paid upgrade or new hosting project.
 - Repository/deployment guards exclude exports, credentials, tokens, device identifiers, SDK binaries, private captures and generated artifacts. Only invented fixtures enter source control.
 

@@ -6,7 +6,12 @@ import {
   association,
   spearman,
 } from "@/lib/analytics/statistics";
-import { localDay, splitInterval, midnight } from "@/lib/analytics/time";
+import {
+  localDay,
+  splitInterval,
+  midnight,
+  addDays,
+} from "@/lib/analytics/time";
 import { demoDataset } from "@/lib/data/demo";
 import { dashboardQuery, factSchema, type Fact } from "@/lib/data/schema";
 const now = new Date("2025-05-10T12:00:00Z"),
@@ -34,6 +39,43 @@ const fact = (overrides: Partial<Fact> = {}): Fact => ({
 });
 const run = (facts: Fact[]) =>
   buildDataset(facts, inventory, { days: 7, timezone: "UTC", now });
+describe("bounded analytics acquisition history", () => {
+  it("retains all 28 prior observations for the earliest displayed skin deviation", () => {
+    const firstShown = addDays("2025-05-10", -27);
+    const observations = Array.from({ length: 29 }, (_, i) => {
+      const day = addDays(firstShown, i - 28);
+      return fact({
+        id: "synthetic-boundary-" + i,
+        kind: "skin_temperature",
+        start: day + "T12:00:00Z",
+        end: null,
+        value: i === 28 ? 35 : 33,
+      });
+    });
+    const result = buildDataset(observations, inventory, {
+      days: 28,
+      timezone: "UTC",
+      now,
+    });
+    expect(result.days[0].day).toBe(firstShown);
+    expect(result.days[0].skin).toBe(35);
+    expect(result.days[0].skinDeviation).toBe(2);
+  });
+  it.each([90, 365])(
+    "retains every selected calendar day in the %i-day range",
+    (days) => {
+      const first = addDays("2025-05-10", 1 - days);
+      const result = buildDataset(
+        [fact({ start: first + "T00:00:00Z", end: first + "T01:00:00Z" })],
+        inventory,
+        { days, timezone: "UTC", now },
+      );
+      expect(result.days).toHaveLength(days);
+      expect(result.days[0]).toMatchObject({ day: first, steps: 100 });
+      expect(result.days.at(-1)?.day).toBe("2025-05-10");
+    },
+  );
+});
 describe("canonical observations", () => {
   it("never adds watch, phone and another provider step channels", () => {
     const result = run([

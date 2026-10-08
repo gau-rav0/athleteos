@@ -6,7 +6,10 @@ import { advanceProjection } from "@/lib/data/projection";
 import { refreshInventory } from "@/lib/data/inventory";
 import type { Fact } from "@/lib/data/schema";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 const failure = {
   data: null,
   error: { code: "57014", message: "private payload must never be logged" },
@@ -15,7 +18,8 @@ const success = (data: unknown) => ({ data, error: null });
 function source(
   replies: Record<string, (ReturnType<typeof success> | typeof failure)[]>,
 ) {
-  const rpc = vi.fn((name: string) => {
+  const rpc = vi.fn((name: string, args?: Record<string, unknown>) => {
+    void args;
     const result = replies[name]?.shift() ?? success([]);
     return Object.assign(Promise.resolve(result), {
       abortSignal: () => Promise.resolve(result),
@@ -58,6 +62,41 @@ const fact = (): Fact => ({
   supported: true,
   bodyFat: null,
 });
+
+test.each([
+  [7, "2025-01-06T05:00:00.000Z"],
+  [28, "2025-01-06T05:00:00.000Z"],
+  [90, "2024-12-08T05:00:00.000Z"],
+  [365, "2024-03-08T05:00:00.000Z"],
+] as const)(
+  "read and durable worker retain the same padded %i-day timezone bounds",
+  async (days, from) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2025-03-09T12:00:00Z"));
+    const fake = source({
+      ...defaults(),
+      advance_web_projection: [
+        success({ processed: 0, scanned: 0, remaining: false, busy: false }),
+      ],
+    });
+    await loadDashboard(fake.client, days, "America/New_York");
+    await advanceProjection(fake.client, days, "America/New_York");
+    const expected = { p_from: from, p_until: "2025-03-10T04:00:00.000Z" };
+    expect(
+      fake.rpc.mock.calls.find(
+        ([name]) => name === "web_projection_status",
+      )?.[1],
+    ).toMatchObject(expected);
+    expect(
+      fake.rpc.mock.calls.find(([name]) => name === "web_facts_cursor")?.[1],
+    ).toMatchObject(expected);
+    expect(
+      fake.rpc.mock.calls.find(
+        ([name]) => name === "advance_web_projection",
+      )?.[1],
+    ).toMatchObject(expected);
+  },
+);
 
 test("GET serving calls only read RPCs and never does projection work", async () => {
   const fake = source(defaults());

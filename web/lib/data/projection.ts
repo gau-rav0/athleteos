@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { dashboardQuery } from "./schema";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
+import { MIN_ANALYTICS_HISTORY_DAYS } from "@/lib/analytics/history";
 
 export const projectionStatusSchema = z.object({ remaining: z.boolean() });
 export function rpcSignal(milliseconds: number, signal?: AbortSignal) {
@@ -30,7 +31,10 @@ export async function advanceProjection(
   const { data, error } = await client
     .rpc("advance_web_projection", {
       p_from: new Date(
-        midnight(addDays(today, -Math.max(days, 90) - 1), timezone),
+        midnight(
+          addDays(today, -Math.max(days, MIN_ANALYTICS_HISTORY_DAYS) - 1),
+          timezone,
+        ),
       ).toISOString(),
       p_until: new Date(midnight(addDays(today, 1), timezone)).toISOString(),
       p_limit: 25,

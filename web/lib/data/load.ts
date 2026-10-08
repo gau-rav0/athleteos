@@ -5,6 +5,7 @@ import type {
 } from "@supabase/supabase-js";
 import { factSchema, inventorySnapshotSchema, type Fact } from "./schema";
 import { buildDataset } from "@/lib/analytics/engine";
+import { MIN_ANALYTICS_HISTORY_DAYS } from "@/lib/analytics/history";
 import { addDays, localDay, midnight } from "@/lib/analytics/time";
 import { projectionStatusSchema, rpcSignal } from "./projection";
 
@@ -27,7 +28,10 @@ export async function loadDashboard(
     now = new Date(),
     today = localDay(now, timezone),
     from = new Date(
-      midnight(addDays(today, -Math.max(days, 90) - 1), timezone),
+      midnight(
+        addDays(today, -Math.max(days, MIN_ANALYTICS_HISTORY_DAYS) - 1),
+        timezone,
+      ),
     ).toISOString(),
     until = new Date(midnight(addDays(today, 1), timezone)).toISOString();
   // This serving path is read-only: projection work belongs to a separate POST.

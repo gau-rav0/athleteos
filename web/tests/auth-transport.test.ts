@@ -38,9 +38,181 @@ beforeEach(() => {
     });
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+});
+
+test("Auth failures are normalized before SDK session teardown, while RPC errors and invalid sessions stay intact", async () => {
+  for (const [status, body] of [
+    [408, { code: "request_timeout" }],
+    [429, { code: "over_request_rate_limit" }],
+    [400, { code: "unexpected_failure" }],
+    [505, { code: "unexpected_failure" }],
+    [503, { code: "bad_jwt" }],
+    [400, "invalid json"],
+    [400, "x".repeat(20000)],
+  ] as const) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(typeof body === "string" ? body : JSON.stringify(body), {
+          status,
+        }),
+      ),
+    );
+    await expect(
+      boundedServerFetch(
+        "https://synthetic.example/auth/v1/token?grant_type=refresh_token",
+      ),
+    ).rejects.toThrow(/^SERVER_TRANSPORT_UNAVAILABLE$/);
+  }
+  for (const url of [
+    "https://synthetic.example/auth/v1/token?grant_type=refresh_token",
+    "https://synthetic.example/rest/v1/rpc/synthetic",
+  ]) {
+    const response = new Response(
+      JSON.stringify({ error_code: "refresh_token_not_found" }),
+      { status: 400 },
+    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    expect(await boundedServerFetch(url)).toBe(response);
+  }
+  for (const url of [
+    "https://synthetic.example/rest/v1/rpc/synthetic",
+    "https://another.example/auth/v1/token?grant_type=refresh_token",
+    "https://synthetic.example/auth/v1/logout",
+    "https://synthetic.example/auth/v1/token?grant_type=password",
+  ]) {
+    const response = new Response("unavailable", { status: 429 });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    expect(await boundedServerFetch(url)).toBe(response);
+  }
+  const passwordFailure = new Response(
+    JSON.stringify({ error_code: "invalid_credentials" }),
+    { status: 400 },
+  );
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(passwordFailure));
+  expect(
+    await boundedServerFetch(
+      "https://synthetic.example/auth/v1/token?grant_type=password",
+    ),
+  ).toBe(passwordFailure);
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}")));
+  await expect(
+    boundedServerFetch(
+      "https://synthetic.example/auth/v1/token?grant_type=refresh_token",
+    ),
+  ).rejects.toThrow(/^SERVER_TRANSPORT_UNAVAILABLE$/);
+});
+
+test("installed SSR SDK preserves expired refresh cookies through Auth outages and recovers with validated identity", async () => {
+  vi.useFakeTimers();
+  const { createServerClient: installedServer } =
+    await vi.importActual<typeof import("@supabase/ssr")>("@supabase/ssr");
+  const session = {
+    access_token: "synthetic-expired-access",
+    refresh_token: "synthetic-refresh",
+    expires_at: Math.floor(Date.now() / 1000) - 60,
+    expires_in: 3600,
+    user: { id: "00000000-0000-4000-8000-000000000001" },
+    token_type: "bearer",
+  };
+  const jar = new Map([["synthetic-session", JSON.stringify(session)]]);
+  const writes: { name: string; value: string }[] = [];
+  const client = () =>
+    installedServer("https://synthetic.example", "synthetic-public", {
+      cookieEncoding: "raw",
+      cookieOptions: { name: "synthetic-session" },
+      global: { fetch: boundedServerFetch },
+      cookies: {
+        getAll: () => Array.from(jar, ([name, value]) => ({ name, value })),
+        setAll: (values) => {
+          writes.push(...values);
+          for (const { name, value } of values) {
+            if (value) jar.set(name, value);
+            else jar.delete(name);
+          }
+        },
+      },
+    });
+  for (const response of [
+    () =>
+      new Response(JSON.stringify({ error_code: "over_request_rate_limit" }), {
+        status: 429,
+      }),
+    () =>
+      new Response(JSON.stringify({ error_code: "unexpected_failure" }), {
+        status: 400,
+      }),
+    () => new Response("malformed", { status: 400 }),
+    () => new Response("{}"),
+  ]) {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(response));
+    const pending = client().auth.getUser();
+    await vi.advanceTimersByTimeAsync(35000);
+    const result = await pending;
+    expect(result.data.user).toBeNull();
+    expect(result.error).toBeInstanceOf(AuthRetryableFetchError);
+    expect(writes).toEqual([]);
+    expect(jar.get("synthetic-session")).toBe(JSON.stringify(session));
+  }
+  const refreshed = {
+    ...session,
+    access_token: "synthetic-new-access",
+    refresh_token: "synthetic-rotated-refresh",
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+  };
+  const fetcher = vi
+    .fn()
+    .mockImplementation(
+      (input: string) =>
+        new Response(
+          JSON.stringify(input.includes("/token?") ? refreshed : session.user),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  const recovered = await client().auth.getUser();
+  expect(recovered.error).toBeNull();
+  expect(recovered.data.user?.id).toBe(session.user.id);
+  expect(
+    fetcher.mock.calls.some(([url]) => String(url).endsWith("/auth/v1/user")),
+  ).toBe(true);
+  expect(
+    writes.some(({ value }) => value.includes("synthetic-rotated-refresh")),
+  ).toBe(true);
+  jar.set("synthetic-session", JSON.stringify(session));
+  writes.length = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockImplementation(
+        () =>
+          new Response(
+            JSON.stringify({ error_code: "refresh_token_not_found" }),
+            { status: 400 },
+          ),
+      ),
+  );
+  const invalid = await client().auth.getUser();
+  expect(invalid.data.user).toBeNull();
+  expect(invalid.error?.code).toBe("refresh_token_not_found");
+  expect(writes.some(({ value }) => value === "")).toBe(true);
+  expect(jar.has("synthetic-session")).toBe(false);
+  jar.set("synthetic-session", JSON.stringify(refreshed));
+  writes.length = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation(() => new Response("{}")),
+  );
+  const malformedUser = await client().auth.getUser();
+  expect(malformedUser.data.user).toBeNull();
+  expect(malformedUser.error).toBeInstanceOf(AuthRetryableFetchError);
+  expect(writes).toEqual([]);
+  expect(jar.get("synthetic-session")).toBe(JSON.stringify(refreshed));
 });
 
 test("Auth transport adds a 10s deadline and disables request caching", async () => {
@@ -48,7 +220,9 @@ test("Auth transport adds a 10s deadline and disables request caching", async ()
   const timeout = vi
     .spyOn(AbortSignal, "timeout")
     .mockReturnValue(deadline.signal);
-  const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(new Response('{"id":"synthetic-owner"}'));
   vi.stubGlobal("fetch", fetcher);
   await boundedServerFetch("https://synthetic.example/auth/v1/user", {
     cache: "force-cache",
@@ -98,7 +272,9 @@ test("plain Request with its implicit signal still receives a transport deadline
   const timeout = vi
     .spyOn(AbortSignal, "timeout")
     .mockReturnValue(deadline.signal);
-  const fetcher = vi.fn().mockResolvedValue(new Response("{}"));
+  const fetcher = vi
+    .fn()
+    .mockResolvedValue(new Response('{"id":"synthetic-owner"}'));
   vi.stubGlobal("fetch", fetcher);
   await boundedServerFetch(
     new Request("https://synthetic.example/auth/v1/user"),

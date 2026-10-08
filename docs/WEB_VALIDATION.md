@@ -101,3 +101,10 @@ Migration 0010 and its version-gated decoder pass 12 focused SQL/codec tests, in
 ## User pause checkpoint
 
 The compact consumer and synthetic provider are now integrated. Latest 32 focused tests, TypeScript, scoped lint and provider syntax checks pass. Explicit has_more controls continuation, canonical cursors must descend with PostgreSQL microsecond precision, invalid records count toward the 100k budget, and malformed later envelopes preserve valid partial charts. Full combined build/browser/unit regression after this consumer change is pending. Migration 0010 and later web source remain undeployed. User requested a stop; save/push this source, preserve both worktrees and wait for explicit RESUME. No historical archive or phone operations occurred.
+
+
+## Resumed compact-serving regression
+
+After explicit RESUME from 2359bbf, strict TypeScript, full ESLint and all 108 unit/database tests passed. The full desktop/mobile browser suite passed 32/32 in one run; its servers were stopped before building. Test fixtures use the new compact RPC and verify Auth isolation, navigation retention/logout, read truncation versus projection work, cancellation/backoff, sparse geometry and accessibility. Supabase dry-run lists only migration 0010 pending. Deployment/live acceptance follows production build and source checkpoint; local fixtures do not certify hosting reliability. A DOM response timestamp supports verifying that actual refresh checks observed a new response rather than retained chart geometry.
+
+The resumed production build passed, including TypeScript and compact-serving source. The final response-timestamp attribute passes scoped lint and formatting; it adds no health readings to the DOM.

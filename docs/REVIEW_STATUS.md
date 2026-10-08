@@ -1,6 +1,6 @@
 # AthleteOS review handoff — 8 October 2026
 
-Development is paused at the user's request. Wait for explicit RESUME. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed history-read checkpoint: `628ebcf`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
 
 ```sh
 git fetch origin
@@ -28,15 +28,15 @@ The newest source checkpoint adds persistent authenticated layout state across t
 
 Partial status now distinguishes projection backlog, unknown projection status, incomplete reads and invalid summaries. Global partial-data withholding remains conservative; read truncation alone no longer schedules futile projection workers. The 14-second read budget also caps a late page's timeout.
 
-The combined source passes **97/97 unit/database tests**, strict TypeScript, ESLint and production build. Full browser run passed **29/32**; two old demo notice expectations and development-badge interference with mobile navigation were corrected. A focused **6/6** desktop/mobile rerun passes, so all **32 distinct browser cases** have passed across these runs. This is not a single clean full run or hosted acceptance. New navigation/partial-status changes are not deployed yet. No historical audit/import has started.
+The resumed compact-serving source passes **108/108 full unit/database tests**, strict TypeScript, ESLint and a clean **32/32 full desktop/mobile browser run**. Production build also passes. These fixture checks do not establish hosted acceptance. No historical audit/import has started.
 
-A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration is now saved; full integration regression and deployment remain pending.** Its latest 32 focused tests, TypeScript, scoped lint and mock-provider syntax checks pass, including exact microsecond cursor ordering. Migration 0010 is not applied; deploy it before the new consumer. It changes neither canonical raw storage nor analytics formulas.
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration and full local regression are verified; deployment and actual hosted acceptance remain pending.** Canonical cursors preserve microsecond precision. Migration 0010 is not applied yet; deploy it before the new consumer. It changes neither canonical raw storage nor analytics formulas.
 
 ## Validation and deployment
 
-- Full unit/database suite: **74/74 passed**. Final snapshot SQL rerun: **6/6 passed**.
+- Latest full unit/database suite: **108/108 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
 - Strict TypeScript, ESLint and production Next.js build: **passed**.
-- Full desktop/mobile browser run: **26/28 passed**. Two cancellation-test teardown races were corrected; all **6/6** inventory tests passed on focused rerun. All **28 distinct cases** have passed across those runs. Do not describe this as a single clean full run.
+- Latest full desktop/mobile browser run: **32/32 passed**. Earlier fixture wording/teardown and development-indicator failures were corrected; historical runs remain documented in WEB_VALIDATION.md.
 - Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
 - Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
 - Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.

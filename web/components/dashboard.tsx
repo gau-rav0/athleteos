@@ -374,7 +374,11 @@ export function Dashboard({
             )}
           </div>
         </header>
-        <main id="main" className="dashboard-main">
+        <main
+          id="main"
+          className="dashboard-main"
+          data-response-at={data?.fetchedAt}
+        >
           <div className="page-heading">
             <div>
               <p className="eyebrow">{heading.eyebrow}</p>

@@ -1,3 +1,9 @@
+# RESUMED explicitly by the user — 8 October 2026
+
+Continue from pushed pause checkpoint `2359bbf1b16c9751b2cc4e765908d4878a3490d8`. The user's explicit RESUME supersedes the pause instructions below; preserve them as history. The feature tree was clean at resume. First finish full compact-serving regression, then reviewed migration 0010 and deployment to the existing projects, followed by actual live acceptance. Historical preparation/product features remain gated in the order below; first historical production upload and main merge still require approval.
+
+---
+
 # PAUSED by the user — 8 October 2026
 
 Development is stopped. Do not execute queued follow-ups, start servers, deploy, import historical data or modify phone queues until the user explicitly says RESUME. Preserve this feature worktree and the original ingestion checkout. This pause supersedes the resumed/historical notes below.

@@ -29,6 +29,7 @@ describe("authenticated SQL projections", () => {
       "0005_web_dashboard_facts.sql",
       "0006_web_projection_reads.sql",
       "0007_web_projection_refresh.sql",
+      "0008_web_projection_checkpoint.sql",
     ]) {
       let sql = readFileSync(resolve("../supabase/migrations", name), "utf8");
       sql = sql.replace("create extension if not exists pgcrypto;", "");
@@ -248,6 +249,31 @@ describe("authenticated SQL projections", () => {
         syntheticRawRecords: 200000,
         refreshAndPageMs: Math.round(performance.now() - start),
         compactPageBytes: JSON.stringify(page.rows[0].result).length,
+      }),
+    );
+    const workerStart = performance.now();
+    const worker = await db.query<{
+      result: { processed: number; scanned: number; remaining: boolean };
+    }>(
+      "select public.advance_web_projection('2023-01-01Z','2023-02-01Z',25) result",
+    );
+    expect(worker.rows[0].result.processed).toBe(25);
+    expect(worker.rows[0].result.scanned).toBe(1025);
+    const workerMs = Math.round(performance.now() - workerStart);
+    const readStart = performance.now();
+    await db.query(
+      "select public.web_projection_status('2023-01-01Z','2023-02-01Z')",
+    );
+    const keyset = await db.query<{ result: unknown[] }>(
+      "select public.web_facts_cursor('2023-01-01Z','2023-02-01Z',null,null,1000) result",
+    );
+    expect(keyset.rows[0].result.length).toBe(1000);
+    console.info(
+      JSON.stringify({
+        syntheticRawRecords: 200000,
+        workerMs,
+        workerScanned: worker.rows[0].result.scanned,
+        readOnlyStatusAndPageMs: Math.round(performance.now() - readStart),
       }),
     );
   });

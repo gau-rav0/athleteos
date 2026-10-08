@@ -2,54 +2,125 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 vi.mock("server-only", () => ({}));
 import { loadDashboard } from "@/lib/data/load";
+import { advanceProjection } from "@/lib/data/projection";
+import type { Fact } from "@/lib/data/schema";
 
 afterEach(() => vi.restoreAllMocks());
-
-function source(errors: (string | null)[]) {
-  const limits: number[] = [];
-  const rpc = vi.fn(async (name: string, args: { p_limit?: number }) => {
-    if (name === "refresh_web_facts") {
-      limits.push(args.p_limit!);
-      const code = errors.shift();
-      return code
-        ? {
-            data: null,
-            error: { code, message: "private payload must never be logged" },
-          }
-        : { data: { processed: 0, remaining: false }, error: null };
-    }
-    return {
-      data: name === "web_inventory" ? { inventory: [], sync: null } : [],
-      error: null,
-    };
+const failure = {
+  data: null,
+  error: { code: "57014", message: "private payload must never be logged" },
+};
+const success = (data: unknown) => ({ data, error: null });
+function source(
+  replies: Record<string, (ReturnType<typeof success> | typeof failure)[]>,
+) {
+  const rpc = vi.fn((name: string) => {
+    const result = replies[name]?.shift() ?? success([]);
+    return Object.assign(Promise.resolve(result), {
+      abortSignal: () => Promise.resolve(result),
+    });
   });
-  return { client: { rpc } as unknown as SupabaseClient, limits, rpc };
+  return { client: { rpc } as unknown as SupabaseClient, rpc };
 }
-
-test("cancelled refresh retries a smaller transaction before serving completed facts", async () => {
-  vi.spyOn(console, "warn").mockImplementation(() => {});
-  const fake = source(["57014", null]);
-  const result = await loadDashboard(fake.client, 7, "UTC");
-  expect(fake.limits).toEqual([100, 25]);
-  expect(result.partial).toBe(false);
-  expect(result.queryCount).toBe(8);
+const defaults = () => ({
+  web_projection_status: [success({ remaining: false })],
+  web_inventory: [success({ inventory: [], sync: null })],
+});
+const fact = (): Fact => ({
+  id: "00000000-0000-4000-8000-000000000010",
+  kind: "steps",
+  provider: "health_connect",
+  origin: "live",
+  source: "synthetic.example",
+  channel: "synthetic-watch",
+  rank: 300,
+  start: new Date().toISOString(),
+  end: new Date(Date.now() + 60000).toISOString(),
+  received: new Date().toISOString(),
+  value: 100,
+  samples: 1,
+  min: null,
+  max: null,
+  sessions: [],
+  hourly: [],
+  supported: true,
+  bodyFat: null,
 });
 
-test("repeated timeouts serve cached facts as partial and withhold scores", async () => {
+test("GET serving calls only read RPCs and never does projection work", async () => {
+  const fake = source(defaults());
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(fake.rpc.mock.calls.map(([name]) => name)).toEqual([
+    "web_projection_status",
+    "web_inventory",
+    "web_facts_cursor",
+  ]);
+  expect(result.partial).toBe(false);
+  expect(result.queryCount).toBe(3);
+});
+
+test("status timeouts keep validated cached data partial and redact errors", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const fake = source(["57014", "57014"]);
+  const fake = source({
+    ...defaults(),
+    web_projection_status: [failure],
+    web_facts_cursor: [success([fact()])],
+  });
   const result = await loadDashboard(fake.client, 7, "UTC");
   expect(result.partial).toBe(true);
   expect(result.readiness.score).toBeNull();
-  expect(result.days.every((d) => d.steps === null)).toBe(true);
+  expect(result.days.at(-1)?.steps).toBe(100);
   expect(JSON.stringify(warn.mock.calls)).not.toContain("private payload");
 });
 
-test("permission errors remain failures rather than successful partial refreshes", async () => {
+test("inventory failure retains valid charts with partial coverage", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
-  const fake = source(["42501"]);
+  const fake = source({
+    ...defaults(),
+    web_inventory: [failure],
+    web_facts_cursor: [success([fact()])],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.partial).toBe(true);
+  expect(result.days.at(-1)?.steps).toBe(100);
+  expect(result.inventoryAvailable).toBe(false);
+});
+
+test("initial fact read failure is unavailable rather than an empty healthy day", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const fake = source({ ...defaults(), web_facts_cursor: [failure] });
   await expect(loadDashboard(fake.client, 7, "UTC")).rejects.toThrow(
-    "DATA_SUMMARIES_UNAVAILABLE",
+    "DATA_READ_UNAVAILABLE",
   );
-  expect(fake.limits).toEqual([100]);
+});
+
+test("later fact read failure retains earlier pages as explicitly partial", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const first = Array.from({ length: 2000 }, (_, index) => ({
+    ...fact(),
+    id: `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+  }));
+  const fake = source({
+    ...defaults(),
+    web_facts_cursor: [success(first), failure],
+  });
+  const result = await loadDashboard(fake.client, 7, "UTC");
+  expect(result.partial).toBe(true);
+  expect(fake.rpc).toHaveBeenCalledTimes(4);
+});
+
+test("worker is independently bounded and rejects malformed success metadata", async () => {
+  const fake = source({
+    advance_web_projection: [
+      success({ processed: 25, scanned: 25, remaining: true, busy: false }),
+    ],
+  });
+  expect((await advanceProjection(fake.client, 7, "UTC")).processed).toBe(25);
+  expect(fake.rpc.mock.calls[0][0]).toBe("advance_web_projection");
+  const malformed = source({
+    advance_web_projection: [
+      success({ processed: 50000, scanned: 0, remaining: false, busy: false }),
+    ],
+  });
+  await expect(advanceProjection(malformed.client, 7, "UTC")).rejects.toThrow();
 });

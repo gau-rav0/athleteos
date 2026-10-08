@@ -91,14 +91,23 @@ createServer(async (req, res) => {
   }
   if (url.pathname === "/rest/v1/rpc/refresh_web_facts")
     return send(200, { processed: 0, remaining: false });
+  if (url.pathname === "/rest/v1/rpc/web_projection_status")
+    return send(200, { remaining: false });
+  if (url.pathname === "/rest/v1/rpc/advance_web_projection")
+    return send(200, {
+      processed: 0,
+      scanned: 0,
+      remaining: false,
+      busy: false,
+    });
   const now = new Date().toISOString(),
     date = now.slice(0, 10),
     start = date + "T00:00:00Z",
     end = date + "T23:59:00Z";
-  if (url.pathname === "/rest/v1/rpc/web_facts_page")
+  if (url.pathname === "/rest/v1/rpc/web_facts_cursor")
     return send(
       200,
-      input.p_offset === 0
+      !input.p_before_id
         ? [
             {
               id: "synthetic-record-" + user.id,

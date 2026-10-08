@@ -95,10 +95,64 @@ export function Dashboard({
     if (demo || logoutBusy) return;
     const controller = new AbortController();
     let active = true,
-      inFlight = false;
+      inFlight = false,
+      workInFlight = false,
+      partial = true,
+      workDelay = 2000,
+      lastRead = 0;
+    let workTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleWork = () => {
+      if (!active || !partial || workTimer || workInFlight) return;
+      workTimer = setTimeout(() => {
+        workTimer = undefined;
+        void work();
+      }, workDelay);
+    };
+    const work = async () => {
+      if (!active || !partial || workInFlight) return;
+      if (document.visibilityState !== "visible") {
+        workDelay = 20000;
+        scheduleWork();
+        return;
+      }
+      workInFlight = true;
+      try {
+        const response = await fetch("/api/dashboard/projection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days, timezone }),
+          cache: "no-store",
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+        if (!active) return;
+        if (response.status === 401) {
+          setSnapshot(null);
+          window.location.replace("/login");
+          return;
+        }
+        if (!response.ok) throw new Error("WORK_UNAVAILABLE");
+        const progress = await response.json();
+        if (
+          typeof progress.remaining !== "boolean" ||
+          typeof progress.busy !== "boolean"
+        )
+          throw new Error("INVALID_PROGRESS");
+        partial = progress.remaining;
+        workDelay = progress.busy ? Math.min(workDelay * 2, 60000) : 2000;
+        if (!partial) void refresh();
+      } catch {
+        // Backfill failure never replaces valid cached charts with an error page.
+        workDelay = Math.min(workDelay * 2, 60000);
+      } finally {
+        workInFlight = false;
+        scheduleWork();
+      }
+    };
     const refresh = async () => {
       if (inFlight || !active) return;
       inFlight = true;
+      lastRead = Date.now();
       try {
         const response = await fetch(
           `/api/dashboard?days=${days}&timezone=${encodeURIComponent(timezone)}`,
@@ -122,21 +176,29 @@ export function Dashboard({
         if (active) {
           setSnapshot({ key, data: result });
           setError(null);
+          partial = result.partial;
+          scheduleWork();
         }
       } catch {
-        if (active && !controller.signal.aborted)
+        if (active && !controller.signal.aborted) {
           setError({
             key,
             message:
               "Could not refresh your dashboard. Please retry; missing values have not been replaced.",
           });
+          scheduleWork();
+        }
       } finally {
         inFlight = false;
       }
     };
     void refresh();
     const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void refresh();
+      if (
+        document.visibilityState === "visible" &&
+        (partial || Date.now() - lastRead >= 60000)
+      )
+        void refresh();
     }, 20000);
     const visible = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -150,6 +212,7 @@ export function Dashboard({
       active = false;
       controller.abort();
       clearInterval(timer);
+      if (workTimer) clearTimeout(workTimer);
       document.removeEventListener("visibilitychange", visible);
       window.removeEventListener("pageshow", pageshow);
     };

@@ -98,7 +98,7 @@ test("empty, sparse, partial and error states never fabricate signals", async ({
     page.getByText("Insufficient data", { exact: true }),
   ).toBeVisible();
   await page.goto("/demo/today?state=error");
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "data connection unavailable",
   );
 });

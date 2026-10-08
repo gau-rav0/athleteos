@@ -72,6 +72,7 @@ export type Dataset = {
   days: Day[];
   workouts: Session[];
   inventory: Inventory;
+  inventoryAvailable?: boolean;
   partial: boolean;
   invalidFacts: number;
   readiness: Readiness;

@@ -1,4 +1,10 @@
-# Stopped at user request — 2026-10-08
+# Resumed platform work — 2026-10-08
+
+The latest user master task explicitly resumes dashboard work and authorizes agents, validated milestone pushes, production fixes and private historical audit preparation. The old pause records below are historical. Current scope/ownership and import approval gates are in PLATFORM_EXECUTION.md; current verification is in WEB_VALIDATION.md. Keep the existing feature branch and draft PR #2. Do not change Android or phone upload queues. First historical production upload still needs explicit approval after the private audit and overlap review.
+
+Privacy safeguards, production chart regressions and the responsive redesign are pushed. The bounded projection reliability patch passes 51 unit/database tests, TypeScript, lint, production build and 20 functional desktop/mobile browser checks (including focused reruns). Migration 0008 and deployment await live acceptance. Historical ZIP is still unopened; product feature milestone remains pending.
+
+# Earlier stop at user request — 2026-10-08
 
 Development is paused. Preserve this feature worktree and the original ingestion checkout. Do not resume automatically.
 

@@ -3,6 +3,13 @@ import type { Dataset, Metric } from "@/lib/analytics/engine";
 import { localDay } from "@/lib/analytics/time";
 import { Status, fmt, dateLabel } from "./dashboard-primitives";
 export function InventoryTable({ data }: { data: Dataset }) {
+  if (data.inventoryAvailable === false)
+    return (
+      <p className="notice">
+        Server inventory is temporarily unavailable. This does not mean your
+        uploaded records are missing.
+      </p>
+    );
   return (
     <div
       className="table-scroll"
@@ -67,7 +74,11 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
       <div className="source-summary">
         <div>
           <span>Latest server run</span>
-          <strong>{data.inventory.sync?.status || "No run recorded"}</strong>
+          <strong>
+            {data.inventoryAvailable === false
+              ? "Inventory unavailable"
+              : data.inventory.sync?.status || "No run recorded"}
+          </strong>
         </div>
         <div>
           <span>Run completion</span>
@@ -82,9 +93,11 @@ export function Sources({ data, demo }: { data: Dataset; demo: boolean }) {
         <div>
           <span>Historical records</span>
           <strong>
-            {historical
-              ? `${fmt(historical)} present · continuity unverified`
-              : "No imported records observed"}
+            {data.inventoryAvailable === false
+              ? "Inventory unavailable"
+              : historical
+                ? `${fmt(historical)} present · continuity unverified`
+                : "No imported records observed"}
           </strong>
         </div>
         <div>

@@ -34,8 +34,11 @@ export function TrendChart({
 }) {
   const [table, setTable] = useState(false),
     data = days.map((day) => ({
-      date: day.day.slice(5),
-      value: typeof day[metric] === "number" ? day[metric] : null,
+      date: day.day,
+      value:
+        typeof day[metric] === "number" && Number.isFinite(day[metric])
+          ? day[metric]
+          : null,
     }));
   const valid = data.filter((d) => d.value !== null).length;
   if (!valid)
@@ -51,13 +54,14 @@ export function TrendChart({
       <CartesianGrid stroke="#27303a" vertical={false} />
       <XAxis
         dataKey="date"
-        tick={{ fill: "#83909e", fontSize: 10 }}
+        tick={{ fill: "#a2b3c7", fontSize: 11 }}
+        tickFormatter={(date: string) => date.slice(5)}
         tickLine={false}
         axisLine={false}
         minTickGap={36}
       />
       <YAxis
-        tick={{ fill: "#83909e", fontSize: 10 }}
+        tick={{ fill: "#a2b3c7", fontSize: 11 }}
         tickLine={false}
         axisLine={false}
         width={40}
@@ -126,7 +130,8 @@ export function TrendChart({
                 dataKey="value"
                 stroke={color}
                 strokeWidth={2}
-                dot={valid < 15}
+                dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "#111a26" }}
                 connectNulls={false}
                 isAnimationActive={false}
               />
@@ -141,7 +146,8 @@ export function TrendChart({
                 fill={color}
                 fillOpacity={0.08}
                 strokeWidth={2}
-                dot={valid < 10}
+                dot={{ r: 2, fill: color, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "#111a26" }}
                 connectNulls={false}
                 isAnimationActive={false}
               />

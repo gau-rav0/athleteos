@@ -112,8 +112,8 @@ test("installed SSR SDK preserves expired refresh cookies through Auth outages a
   const { createServerClient: installedServer } =
     await vi.importActual<typeof import("@supabase/ssr")>("@supabase/ssr");
   const session = {
-    access_token: "synthetic-expired-access",
-    refresh_token: "synthetic-refresh",
+    access_token: "demo-expired",
+    refresh_token: "demo-refresh",
     expires_at: Math.floor(Date.now() / 1000) - 60,
     expires_in: 3600,
     user: { id: "00000000-0000-4000-8000-000000000001" },
@@ -160,8 +160,8 @@ test("installed SSR SDK preserves expired refresh cookies through Auth outages a
   }
   const refreshed = {
     ...session,
-    access_token: "synthetic-new-access",
-    refresh_token: "synthetic-rotated-refresh",
+    access_token: "demo-new",
+    refresh_token: "demo-rotated",
     expires_at: Math.floor(Date.now() / 1000) + 3600,
   };
   const fetcher = vi
@@ -181,7 +181,7 @@ test("installed SSR SDK preserves expired refresh cookies through Auth outages a
     fetcher.mock.calls.some(([url]) => String(url).endsWith("/auth/v1/user")),
   ).toBe(true);
   expect(
-    writes.some(({ value }) => value.includes("synthetic-rotated-refresh")),
+    writes.some(({ value }) => value.includes("demo-rotated")),
   ).toBe(true);
   jar.set("synthetic-session", JSON.stringify(session));
   writes.length = 0;

@@ -1,0 +1,106 @@
+# AthleteOS review handoff — 9 October 2026
+
+The user explicitly resumed production reliability work with specialist agents and reviewed milestone pushes. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `6474f18`, READY as `dpl_Ft9Jte6wnqxTGaJbLgk8PzAAEJJC`, functions hnd1. Use `git rev-parse HEAD` for the checked-out revision. Older checkpoint evidence below is historical.
+
+```sh
+git fetch origin
+git switch feat/athleteos-web-dashboard-v1
+git log --oneline -15
+```
+
+The user has authorized continued web-platform work, specialist agents, reviewed milestone pushes and deployment to the existing free-tier Vercel project. Keep five primary screens. Do not rebuild the project, merge main without approval, modify Android/phone queues, expose private data or upload historical records before the explicit approval gate.
+
+## Implemented and verified
+
+### Latest reliability milestone
+
+Auth outages now fail closed without becoming invalid-session redirects, including SDK refresh failures that previously removed expired cookies before classification. Known invalid sessions still require login. Real installed SSR-client fixture tests cover preservation, recovery and genuine invalid refresh teardown. A 401 stops maintenance immediately and clears private data before pending login navigation.
+
+Source `6474f18` fixes a demonstrated account-switch leak in retained dashboard state. Authenticated leaf pages pass an opaque account discriminator to a layout-scoped store; another account clears snapshots/settings and cancels obsolete requests. Same-account navigation retains fresh state. Browser regressions cover held old/new reads, logout, back/forward and worker cancellation.
+
+Validation: preceding full unit/database suite **210/210**, full desktop/mobile browser suite **50/50**, additional navigation run **6/6** after extending browser-history coverage, strict TypeScript, full lint, scoped formatting and production build passed. Staged privacy checks passed before each delivered milestone; the full workspace scan passed 182 files. Latest hosted private API cases have passing evidence for all seven valid anonymous/origin checks; an initially malformed inventory body correctly returned 400 and the valid-body retry returned 401/private-no-store.
+
+Live acceptance initially failed all 20 screen/range states with data-read errors. The deployed follow-up rendered complete snapshots in all 15 states at 7/28/90 days; the five yearly states remained qualified by incomplete reads and projection backlog. Earlier diagnostics measured first-page transport deadlines at 8,001–8,009 ms against 8,000 ms. A yearly response reported 15,167 ms server work, with 10,450 ms measured SQL across ten pages and one untimed failed page. A repeated yearly refresh produced a newer snapshot but remained incomplete/pending. Next priority is actual yearly query-plan and checkpoint investigation; no stable-production or full reconciliation claim is made. See [the redacted live report](WEB_LIVE_RELIABILITY_2026_10_08.md). Historical import remains gated, the authorized local archive is unavailable, and physical Android seven-day acceptance is unverified.
+
+- Existing Next.js/TypeScript dashboard: Today, Train, Recover, Progress and Insights; authenticated private APIs, Supabase SSR Auth and owner RLS.
+- Responsive obsidian/cyan design, stronger Today hierarchy, accessible controls, reduced-motion behavior, source-quality drawer and explicit empty/partial states.
+- Sparse chart observations remain visible; chart checks verify finite SVG marks rather than only axes or page headings.
+- Normal GET serves compact validated projections without extracting raw payloads. Separate bounded POST workers advance durable checkpoints; revision/deletion checks, conservative source selection and backoff remain intact.
+- Five-minute owner/timezone coverage snapshots retain exact raw counts as of a reported capture time. Normal reads avoid broad raw inventory aggregation; stale/unavailable metadata is separate from physiological projection completeness.
+- Auth transport deadlines, request cancellation, preservation of cookie refresh batches, generic private errors and retryable Auth-outage handling.
+- Short ranges acquire 61 calendar days instead of 90, retaining the full calculation context; selected 90/365-day ranges are unchanged. The refinement passes 36 focused tests, TypeScript, targeted lint and production build; live after-change acceptance is pending.
+- Single Tokyo function region colocated with the existing Tokyo database; no paid upgrade or new hosting project.
+- Repository/deployment guards exclude exports, credentials, tokens, device identifiers, SDK binaries, private captures and generated artifacts. Only invented fixtures enter source control.
+
+## Current source checkpoint for external review
+
+The newest source checkpoint adds persistent authenticated layout state across the five screens, retaining range/timezone/loaded charts without shared or persistent health-data caches. Per-navigation authentication remains in the page. Logout and 401 clear state. New navigation/account-switch browser regressions are included.
+
+Partial status now distinguishes projection backlog, unknown projection status, incomplete reads and invalid summaries. Global partial-data withholding remains conservative; read truncation alone no longer schedules futile projection workers. The 14-second read budget also caps a late page's timeout.
+
+Current source passes **163/163 full unit/database tests**, strict TypeScript and ESLint. The earlier compact-serving checkpoint passed a clean 32/32 desktop/mobile browser run; newer tuple integration passed 31/32 full and 18/18 relevant after its scheduling fix. Current source subsequently passed a clean full 32/32 desktop/mobile run. Production build also passes. These fixture checks do not establish hosted acceptance. No historical audit/import has started.
+
+A lossless compact transport is also implemented and tested as additive migration 0010, decoder and wire-format documentation. It preserves per-record identity/provenance, revision/tombstone filtering and malformed-summary quarantine, with explicit continuation under 4,000-record/2 MiB limits. **Read-serving integration, full local regression and deployment are verified; actual hosted acceptance remains pending.** Canonical cursors preserve microsecond precision. Migration 0010 is now applied; tuple consumer source `c917ac1` and budget integration `163d210` are deployed. It changes neither canonical raw storage nor analytics formulas.
+
+Tuple migration 0011 is applied: versioned 18-field lossless transport raises the maximum to 8,000 records within the same 2 MiB response budget, preserving canonical microsecond cursors and quarantine. Migration 0012 is applied: a four-second processing deadline commits exact resumable prefixes; the authenticated server requests up to 50 extractions. The initial query/individual extraction may exceed that budget. Both revisions preserve owner RLS and raw ingestion. Deployment `dpl_FLcXGebxU9hSsWbfj7hAk59KGcTW` is READY, functions hnd1. Actual yearly reads remain partial; no completion-time estimate is established.
+
+Migration 0013 (source `536ce67`) is applied and streams only accepted tuple prefixes plus lookahead. It preserves the wire contract and reduces redundant byte-limited encoding; synthetic equivalence tests pass. Yearly production reads remain partial despite this improvement. Optional SQL/decoder timing instrumentation passes 163 unit/database tests, TypeScript, lint and build; the clean full 32-case browser run plus 4/4 targeted timing-caption cases pass; consumer 6164378 is deployed READY with security checks 7/7, to locate remaining overhead before changing serving behavior.
+
+Latest diagnostic refinement `232e819` preserves total SQL as unknown after failed/untimed pages while reporting a clearly qualified measured subset and separate successful/failed RPC durations. Relevant consumer tests pass 38/38, TypeScript/full lint/production build pass, and targeted desktop/mobile timing cases pass 6/6. Together with the preceding full 32-case run, 38 distinct browser cases have passing evidence across two runs. A latest yearly response still reports incomplete reads and pending projections despite known timing for every attempted page. No reliability completion or full-history claim is made.
+
+## Validation and deployment
+
+- Latest full unit/database suite: **173/173 passed**. Earlier snapshot SQL rerun: **6/6 passed**.
+- Strict TypeScript, ESLint and production Next.js build: **passed**.
+- Earlier clean desktop/mobile browser run: **32/32 passed**; newer tuple integration passed 31/32 full and 18/18 relevant after its scheduling fix. Current source subsequently passed a clean full 32/32 desktop/mobile run. Earlier fixture wording/teardown and development-indicator failures were corrected; historical runs remain documented in WEB_VALIDATION.md.
+- Responsive inspection: **35 layouts**, five screens and empty/partial states, using synthetic screenshots outside Git.
+- Current deployed synthetic chart matrix: **40/40 passed** across five screens, four ranges, desktop/mobile and reduced motion. No runtime errors or horizontal overflow. This tests rendering, not authenticated database performance.
+- Hosted anonymous dashboard/inventory/projection APIs reject access; hostile/missing inventory mutation Origin is rejected. Responses are generic and private/no-store.
+- Migrations **0005–0015 are deployed**. New snapshot table RLS is enabled; new RPCs are security invokers and anonymous execution is denied.
+- Current hosted deployment: [AthleteOS](https://athleteos-dashboard.vercel.app). Source checkpoint `232e819` is deployed READY in hnd1 as `dpl_3pN8tNJSGfcgbwCNSLEHUgPYtDLr`.
+
+Indexed continuation source 938a34a and migration 0015 are pushed/applied. Generic-plan synthetic tests demonstrate removal of unnecessary earlier-row scans without changing any wire envelopes. Full source suite passes 173/173, TypeScript/full lint/formatting pass. Compatible SQL changes need no frontend redeploy. Post-application live acceptance encountered PGRST002 connection/schema-cache errors and a transient CLI diagnostic-login timeout; direct metadata diagnostics subsequently recovered. The underlying provider cause and stable serving remain unverified. See WEB_INDEXED_CURSOR.md and WEB_VALIDATION.md.
+
+## Production reliability remains under review
+
+Before the resumed fixes, an authenticated response took **35,724 ms / 37 queries**; hosted refreshes included HTTP 503 / SQLSTATE 57014. Expensive projection extraction was coupled to serving, and repeated inventory aggregation added database load. Rendering also needed production-specific hydration and sparse-observation fixes.
+
+After separating workers, colocating functions and caching calendar calculations, initial complete authenticated checks took **5,120–8,462 ms**. Later coverage-inventory timeouts still produced partial responses; this led to migration 0009's separate snapshot worker. On the newest deployment, initial complete Today checks measured **14,074 ms** and **7,238 ms**, with real chart marks and no UI error. Latency is still variable. **Milestone A is not accepted yet.** Repeated authenticated five-screen × 7/28/90/365-day checks and refresh verification are in progress.
+
+The speculative covering-index trial showed no measurable benefit and is preserved only in `docs/performance/RAW_INVENTORY_INDEX_CANDIDATE.sql`; it is not a migration and was not deployed. Actual PostgreSQL cancellation after a hosted HTTP disconnect is not proven. SDK session-refresh retries can exceed the per-attempt Auth timeout.
+
+## Implemented but experimental
+
+Existing deterministic analytics include source-selected daily trends, sleep timing/stages, qualified sleep-window HR, weight smoothing/change, logged training duration and evidence-gated readiness/associations. These are versioned wellness-context calculations, not validated clinical or injury-prediction models. See [formulas](WEB_ANALYTICS_V0.md).
+
+Missing genuine RMSSD remains unavailable. Samsung proprietary HRV and Energy Score are not relabeled as RMSSD. Partial projections withhold readiness/associations. Logged minutes do not establish muscular load, cardiovascular strain or precise energy balance.
+
+## Remaining work, in order
+
+1. **A — Live reliability:** finish repeated authenticated screen/range acceptance, investigate remaining latency, verify long-range catch-up and refresh behavior, record measurements and failures honestly.
+2. **B — Design acceptance:** integrate any fixes revealed by live use; the current visual redesign and synthetic responsive review are complete, but future feature additions need another visual review.
+3. **C — Evidence-supported product features:** configurable sleep reference, full recovery contributors, same-source 7/28/60-day baselines, observed energy timeline, cautious deterministic guidance, personal goals, lightweight journal and comparable strength/cardio benchmarks. Interfaces are agreed; these additions are **not implemented yet**. Coach/labs/camera extension contracts must stay clearly unsupported where no validated pipeline exists.
+4. **D — Private historical preparation:** inspect archive integrity outside every Git/build directory, use the existing importer for a private dry-run, resolve sidecar/timestamp uncertainty, quarantine malformed records and compare canonical identities with live overlaps.
+5. **E — Historical production integration:** obtain explicit user approval after the concrete dry-run/overlap plan, then authenticated bounded import, live precedence/idempotency checks and dashboard projection backfill.
+6. **F — Integrated acceptance:** repeat analytics, SQL/RLS, auth isolation, browser/mobile/accessibility, dependency/privacy, performance and production checks; update PR #2 and the final handoff. Merge requires approval.
+
+The supplied historical ZIP remains **unopened and unextracted** at this checkpoint. No historical production upload, private dry-run, overlap result or backfill completion is claimed. Android and existing upload queues are untouched. Physical ingestion acceptance and the seven-day device reliability gate remain separate from dashboard verification.
+
+## Known limitations and reviewer focus
+
+- Runtime dependency audit: zero findings. Five development-only advisories remain through Next's lint dependency chain, with older peer-range warnings; no forced framework downgrade was performed.
+- Focus review on projection cursor/revision/deletion safety, snapshot freshness and exact-count semantics, owner isolation, worker scheduling/cancellation, truthful analytics gating and actual plotted marks.
+- Do not request private exports, credentials or authenticated screenshots in a public review. Validate using invented fixtures and structural reports.
+- Start with [execution gates](PLATFORM_EXECUTION.md), [validation evidence](WEB_VALIDATION.md), [saved checkpoint](WEB_CHECKPOINT.md), [security](WEB_SECURITY.md) and [web setup](WEB_DASHBOARD.md).
+
+```sh
+cd web
+npm ci
+npm run typecheck
+npm run lint
+npm test -- --maxWorkers=2
+npm run test:e2e
+npm run build
+```
+
+Schedule browser suites, builds and database benchmarks to respect the local 8 GB RAM constraint. Real Supabase login must use private user input; mocked browser tests never establish hosted acceptance.

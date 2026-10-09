@@ -1,6 +1,6 @@
-# AthleteOS review handoff — 8 October 2026
+# AthleteOS review handoff — 9 October 2026
 
-The user explicitly resumed from checkpoint `2359bbf` on 8 October 2026. Compact-serving integration checks are continuing. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `232e819`; subsequent source/documentation checkpoints continue on this feature branch. Use `git rev-parse HEAD` for the checked-out revision.
+The user explicitly resumed production reliability work with specialist agents and reviewed milestone pushes. This is a progress checkpoint, not a completion claim. Review the existing implementation on `feat/athleteos-web-dashboard-v1` and [draft PR #2](https://github.com/gau-rav0/athleteos/pull/2). `main` has not been merged with this dashboard work. Latest deployed source checkpoint: `6474f18`, READY as `dpl_Ft9Jte6wnqxTGaJbLgk8PzAAEJJC`, functions hnd1. Use `git rev-parse HEAD` for the checked-out revision. Older checkpoint evidence below is historical.
 
 ```sh
 git fetch origin
@@ -11,6 +11,16 @@ git log --oneline -15
 The user has authorized continued web-platform work, specialist agents, reviewed milestone pushes and deployment to the existing free-tier Vercel project. Keep five primary screens. Do not rebuild the project, merge main without approval, modify Android/phone queues, expose private data or upload historical records before the explicit approval gate.
 
 ## Implemented and verified
+
+### Latest reliability milestone
+
+Auth outages now fail closed without becoming invalid-session redirects, including SDK refresh failures that previously removed expired cookies before classification. Known invalid sessions still require login. Real installed SSR-client fixture tests cover preservation, recovery and genuine invalid refresh teardown. A 401 stops maintenance immediately and clears private data before pending login navigation.
+
+Source `6474f18` fixes a demonstrated account-switch leak in retained dashboard state. Authenticated leaf pages pass an opaque account discriminator to a layout-scoped store; another account clears snapshots/settings and cancels obsolete requests. Same-account navigation retains fresh state. Browser regressions cover held old/new reads, logout, back/forward and worker cancellation.
+
+Validation: preceding full unit/database suite **210/210**, full desktop/mobile browser suite **50/50**, additional navigation run **6/6** after extending browser-history coverage, strict TypeScript, full lint, scoped formatting and production build passed. Staged privacy checks passed before each delivered milestone; the full workspace scan passed 182 files. Latest hosted private API cases have passing evidence for all seven valid anonymous/origin checks; an initially malformed inventory body correctly returned 400 and the valid-body retry returned 401/private-no-store.
+
+Live acceptance initially failed all 20 screen/range states with data-read errors. The deployed follow-up rendered complete snapshots in all 15 states at 7/28/90 days; the five yearly states remained qualified by incomplete reads and projection backlog. Earlier diagnostics measured first-page transport deadlines at 8,001–8,009 ms against 8,000 ms. A yearly response reported 15,167 ms server work, with 10,450 ms measured SQL across ten pages and one untimed failed page. A repeated yearly refresh produced a newer snapshot but remained incomplete/pending. Next priority is actual yearly query-plan and checkpoint investigation; no stable-production or full reconciliation claim is made. See [the redacted live report](WEB_LIVE_RELIABILITY_2026_10_08.md). Historical import remains gated, the authorized local archive is unavailable, and physical Android seven-day acceptance is unverified.
 
 - Existing Next.js/TypeScript dashboard: Today, Train, Recover, Progress and Insights; authenticated private APIs, Supabase SSR Auth and owner RLS.
 - Responsive obsidian/cyan design, stronger Today hierarchy, accessible controls, reduced-motion behavior, source-quality drawer and explicit empty/partial states.

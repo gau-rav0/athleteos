@@ -16,7 +16,7 @@ The repository is public; health data remains private. A folder on GitHub does n
 
 ## Validation
 
-Synthetic SQL tests apply migrations 0001–0005 to PGlite with an Auth shim, then exercise owner, second-user and anonymous roles, invalid bounds, updates and tombstones. This validates policies/functions without production health fixtures. Browser tests independently verify unauthorized redirect/API rejection, SSR login cookies, logout, two account contexts and demo isolation. A test-only Auth provider validates only runtime-generated synthetic tokens. It is not evidence of a successful real Supabase login; that must be separately verified privately.
+Synthetic SQL suites apply the migrations appropriate to each checkpoint in PGlite with an Auth shim, including the full 0001–0015 chain in the indexed tuple-cursor suite. They exercise owner, second-user and anonymous roles, invalid bounds, updates, tombstones, durable projection checkpoints, coverage snapshots and bounded compact continuation. This validates policies/functions without production health fixtures. Browser tests independently verify unauthorized redirect/API rejection, SSR login cookies, logout, two account contexts and demo isolation. A test-only Auth provider validates only runtime-generated synthetic tokens. It is not evidence of a successful real Supabase login or reliable hosted serving; those must be separately verified privately.
 
 Staged files must pass `python scripts/check_staged.py` and human-readable diff review before each commit. Next builds, node_modules, environment files and Playwright outputs are ignored. Disable browser traces/videos/screenshots for authenticated tests. Synthetic demonstration images may be kept outside Git for UI review.
 

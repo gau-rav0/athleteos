@@ -1,4 +1,12 @@
-# Dashboard preview validation — 2026-10-08
+# Dashboard preview validation — 2026-10-09
+
+## Latest reliability verification — 9 October 2026
+
+Source `6474f18` is pushed and deployed READY as `dpl_Ft9Jte6wnqxTGaJbLgk8PzAAEJJC`, functions hnd1. Full browser validation passed 50/50 desktop/mobile tests. The navigation suite additionally passed 6/6 after adding back/forward assertions to the synthetic account-switch regression. TypeScript, lint, scoped formatting, production build and staged privacy scan pass. The preceding full unit/database suite passed 210/210. Earlier entries below retain their historical counts and limitations.
+
+The new tests verify that another validated account cannot reuse retained charts/settings or accept the previous account's held response. Same-account navigation preserves settings and fresh data without a redundant initial read. Refresh failure preserves the matching snapshot, and GET/projection/inventory 401 stops work and clears data before held login navigation. Installed SDK/cookie integration verifies temporary refresh failures preserve the expired cookie while denying identity; invalid refresh still removes it.
+
+Latest hosted anonymous/origin checks have passing evidence for all seven valid-body cases with private/no-store headers. The first inventory same-origin attempt incorrectly used the projection schema and correctly received 400; retrying the inventory's timezone-only schema received the expected 401. The deployed real-data pass rendered complete snapshots in 15/20 screen/range states (all five screens at 7/28/90 days); all five yearly states reported incomplete reads and pending projections. Repeated yearly refresh produced a newer qualified snapshot, not acceptance. See [live diagnostics](WEB_LIVE_RELIABILITY_2026_10_08.md) for timing evidence. Fixture success does not establish hosted reliability or raw/projection reconciliation.
 
 This is an experimental dashboard milestone, not Phase 1 ingestion acceptance.
 

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -28,6 +28,10 @@ import {
 } from "./dashboard-primitives";
 import { Screens } from "./dashboard-screens";
 import { Sources, Explanation } from "./dashboard-quality";
+import {
+  useDashboardSession,
+  type PrivateDashboardSnapshot,
+} from "./private-dashboard-shell";
 const nav = [
   { slug: "today", label: "Today", icon: Sun },
   { slug: "train", label: "Train", icon: Dumbbell },
@@ -72,17 +76,26 @@ export function Dashboard({
   screen,
   demo,
   mode = "normal",
+  accountKey,
 }: {
   screen: string;
   demo: boolean;
   mode?: string;
+  accountKey?: string;
 }) {
-  const [days, setDays] = useState(28),
-    [timezone, setTimezone] = useState("Asia/Kolkata"),
-    [snapshot, setSnapshot] = useState<{ key: string; data: Dataset } | null>(
-      null,
+  const session = useDashboardSession();
+  const retained = useMemo(
+    () => (!demo && accountKey ? session?.read(accountKey) : null),
+    [session, accountKey, demo],
+  );
+  const [days, setDays] = useState(retained?.days ?? 28),
+    [timezone, setTimezone] = useState(retained?.timezone ?? "Asia/Kolkata"),
+    [snapshot, setSnapshot] = useState<PrivateDashboardSnapshot | null>(
+      retained?.snapshot ?? null,
     ),
-    [error, setError] = useState<{ key: string; message: string } | null>(null),
+    [error, setError] = useState<{ key: string; message: string } | null>(
+      retained?.error ?? null,
+    ),
     [revision, setRevision] = useState(0),
     [panel, setPanel] = useState<string | null>(null),
     [logoutBusy, setLogoutBusy] = useState(false);
@@ -92,28 +105,49 @@ export function Dashboard({
       [demo, days, timezone, mode],
     );
   const data = demo ? synthetic : snapshot?.key === key ? snapshot.data : null;
+  const snapshotRef = useRef(snapshot);
+  useLayoutEffect(() => {
+    if (!demo && accountKey) session?.activate(accountKey);
+  }, [demo, accountKey, session]);
+  useEffect(() => {
+    snapshotRef.current = snapshot;
+    if (!demo && accountKey)
+      session?.save(accountKey, { days, timezone, snapshot, error });
+  }, [demo, accountKey, session, days, timezone, snapshot, error]);
   useEffect(() => {
     if (demo || logoutBusy) return;
     const controller = new AbortController(),
       initialMaintenanceDue = Date.now() + 2000;
+    const cached =
+      snapshotRef.current?.key === key ? snapshotRef.current : null;
     let active = true,
       inFlight = false,
       workInFlight = false,
-      partial = true,
+      partial = cached
+        ? (cached.data.projectionPending ?? cached.data.partial)
+        : true,
       workDelay = 2000,
-      inventoryPending = false,
+      inventoryPending =
+        cached?.data.inventorySnapshot?.refresh_required ?? false,
       inventoryDelay = 2000,
       projectionDue = initialMaintenanceDue,
       inventoryDue = initialMaintenanceDue,
       preferInventory = true,
-      lastRead = 0;
+      lastRead = cached?.loadedAt ?? 0;
     let workTimer: ReturnType<typeof setTimeout> | undefined;
-    const expireSession = () => {
-      // Stop maintenance immediately: document navigation can remain pending.
-      // Leaving expired deadlines active would schedule repeated zero-delay POSTs.
+    const stop = () => {
       active = false;
       controller.abort();
       if (workTimer) clearTimeout(workTimer);
+    };
+    const unregister = accountKey
+      ? session?.registerCancellation(accountKey, stop)
+      : undefined;
+    const expireSession = () => {
+      // Stop maintenance immediately: document navigation can remain pending.
+      // Leaving expired deadlines active would schedule repeated zero-delay POSTs.
+      stop();
+      if (accountKey) session?.clear(accountKey);
       setSnapshot(null);
       setPanel(null);
       window.location.replace("/login");
@@ -235,7 +269,7 @@ export function Dashboard({
           );
         const result = (await response.json()) as Dataset;
         if (active) {
-          setSnapshot({ key, data: result });
+          setSnapshot({ key, data: result, loadedAt: Date.now() });
           setError(null);
           partial = result.projectionPending ?? result.partial;
           inventoryPending =
@@ -255,7 +289,14 @@ export function Dashboard({
         inFlight = false;
       }
     };
-    void refresh();
+    if (
+      cached &&
+      !retained?.error &&
+      revision === 0 &&
+      Date.now() - cached.loadedAt < 60000
+    )
+      scheduleWork();
+    else void refresh();
     const timer = setInterval(() => {
       if (
         document.visibilityState === "visible" &&
@@ -272,18 +313,29 @@ export function Dashboard({
     };
     window.addEventListener("pageshow", pageshow);
     return () => {
-      active = false;
-      controller.abort();
+      stop();
+      unregister?.();
       clearInterval(timer);
       if (workTimer) clearTimeout(workTimer);
       document.removeEventListener("visibilitychange", visible);
       window.removeEventListener("pageshow", pageshow);
     };
-  }, [demo, days, timezone, key, revision, logoutBusy]);
+  }, [
+    demo,
+    days,
+    timezone,
+    key,
+    revision,
+    logoutBusy,
+    retained,
+    session,
+    accountKey,
+  ]);
   const heading = titles[screen],
     explain = (metric: string) => setPanel(metric);
   const signOut = async () => {
     setLogoutBusy(true);
+    if (accountKey) session?.clear(accountKey);
     setSnapshot(null);
     setPanel(null);
     try {
@@ -291,6 +343,7 @@ export function Dashboard({
       if (!response.ok) throw new Error();
       window.location.replace("/login");
     } catch {
+      if (accountKey) session?.activate(accountKey);
       setError({ key, message: "Sign out could not finish. Please retry." });
       setLogoutBusy(false);
     }
